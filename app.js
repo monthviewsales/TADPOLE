@@ -32,6 +32,7 @@ const IDL_CACHE = new Map();
 const MANIFEST_PATH = path.join(__dirname, 'idl', 'manifest.json');
 let MANIFEST_CACHE = null;
 let rpc = null;
+let rpcSubscriptions = null;
 let addressFn = null;
 
 function loadIdl(idlPath) {
@@ -87,6 +88,34 @@ function formatPrice(value) {
   else if (abs >= 0.0001) fixed = value.toFixed(8);
   else fixed = value.toFixed(12);
   return fixed.replace(/\.?0+$/, '');
+}
+
+function formatDelta(prev, next) {
+  if (prev === null || prev === undefined) return { diff: 'n/a', pct: 'n/a' };
+  const diff = next - prev;
+  const diffStr = `${diff >= 0 ? '+' : ''}${formatPrice(diff)}`;
+  if (!prev) return { diff: diffStr, pct: 'n/a' };
+  const pct = (diff / prev) * 100;
+  const pctStr = `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
+  return { diff: diffStr, pct: pctStr };
+}
+
+function renderLiveLine({ price, prevPrice, quoteMint, tokenMint }) {
+  const quoteShort = abbreviate(quoteMint || '');
+  const tokenShort = abbreviate(tokenMint || '');
+  const { diff, pct } = formatDelta(prevPrice, price);
+  const ts = new Date().toISOString();
+  return `[${ts}] price ${formatPrice(price)} ${quoteShort} per ${tokenShort} | Δ ${diff} (${pct})`;
+}
+
+function writeLiveLine(line) {
+  if (!process.stdout.isTTY) {
+    console.log(line);
+    return;
+  }
+  readline.clearLine(process.stdout, 0);
+  readline.cursorTo(process.stdout, 0);
+  process.stdout.write(line);
 }
 
 function formatRatio(buys, sells) {
@@ -259,32 +288,13 @@ function parseTokenAmount(parsedAccount) {
 }
 
 async function getPoolPrice({ pool, tokenMint }) {
-  const decoder = selectDecoder(pool.market);
-  if (!decoder) {
-    throw new Error(
-      `No decoder available for market "${pool.market}".`
-    );
-  }
+  const context = await getPoolVaultContext({ pool, tokenMint });
+  const { baseVault, quoteVault, quoteMint } = context;
 
-  const decoded = await decodePoolState(pool.poolId, decoder);
-  const vaults = extractVaults(decoded, decoder);
-
-  const { baseVault, quoteVault, quoteMint } = selectVaults({
-    vaults,
-    tokenMint,
-    quoteToken: pool.quoteToken,
+  const { baseAmount, quoteAmount } = await fetchVaultBalances({
+    baseVault,
+    quoteVault,
   });
-
-  const accounts = await rpc
-    .getMultipleAccounts([addressFn(baseVault), addressFn(quoteVault)], {
-      commitment: 'confirmed',
-      encoding: 'jsonParsed',
-    })
-    .send();
-  const [baseInfo, quoteInfo] = accounts.value;
-
-  const baseAmount = parseTokenAmount(baseInfo);
-  const quoteAmount = parseTokenAmount(quoteInfo);
 
   if (!baseAmount.ui || !quoteAmount.ui) {
     throw new Error('Zero balance in one of the pool vaults.');
@@ -297,6 +307,46 @@ async function getPoolPrice({ pool, tokenMint }) {
     baseAmount,
     quoteAmount,
   };
+}
+
+async function getPoolVaultContext({ pool, tokenMint }) {
+  const decoder = selectDecoder(pool.market);
+  if (!decoder) {
+    throw new Error(`No decoder available for market "${pool.market}".`);
+  }
+
+  const decoded = await decodePoolState(pool.poolId, decoder);
+  const vaults = extractVaults(decoded, decoder);
+
+  const { baseVault, quoteVault, quoteMint } = selectVaults({
+    vaults,
+    tokenMint,
+    quoteToken: pool.quoteToken,
+  });
+
+  return {
+    decoder,
+    vaults,
+    baseVault,
+    quoteVault,
+    quoteMint,
+  };
+}
+
+async function fetchVaultBalances({ baseVault, quoteVault }) {
+  const accounts = await rpc
+    .getMultipleAccounts([addressFn(baseVault), addressFn(quoteVault)], {
+      commitment: 'confirmed',
+      encoding: 'jsonParsed',
+    })
+    .send();
+  const [baseInfo, quoteInfo] = accounts.value;
+  const slot = accounts.context && accounts.context.slot;
+
+  const baseAmount = parseTokenAmount(baseInfo);
+  const quoteAmount = parseTokenAmount(quoteInfo);
+
+  return { baseAmount, quoteAmount, slot };
 }
 
 async function promptSelection(count) {
@@ -321,6 +371,152 @@ async function promptSelection(count) {
   return index - 1;
 }
 
+async function promptMode() {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  const answer = await new Promise((resolve) => {
+    rl.question('Mode: snapshot (s) or live (l)? ', resolve);
+  });
+  rl.close();
+
+  const trimmed = String(answer || '').trim().toLowerCase();
+  if (trimmed === 'l' || trimmed === 'live') return 'live';
+  return 'snapshot';
+}
+
+function extractAccountNotification(notification) {
+  if (!notification) return null;
+  if (notification.value && notification.value.data) {
+    return {
+      account: notification.value,
+      slot: notification.context && notification.context.slot,
+    };
+  }
+  if (notification.data) {
+    return {
+      account: notification,
+      slot: null,
+    };
+  }
+  return null;
+}
+
+async function streamPoolPrice({ pool, tokenMint }) {
+  if (!rpcSubscriptions) {
+    throw new Error('RPC subscriptions client is not initialized.');
+  }
+
+  const { baseVault, quoteVault, quoteMint } = await getPoolVaultContext({
+    pool,
+    tokenMint,
+  });
+
+  const { baseAmount, quoteAmount, slot } = await fetchVaultBalances({
+    baseVault,
+    quoteVault,
+  });
+
+  const state = {
+    base: { amount: baseAmount, slot },
+    quote: { amount: quoteAmount, slot },
+  };
+
+  console.log('\n--- Live Price ---');
+  console.log(`Market: ${pool.market}`);
+  console.log(`Pool: ${pool.poolId}`);
+  console.log('Press Ctrl+C to stop.');
+  const renderSyncLine = (baseSlot, quoteSlot) =>
+    `[${new Date().toISOString()}] syncing base slot ${baseSlot ?? 'n/a'} / quote slot ${
+      quoteSlot ?? 'n/a'
+    }`;
+
+  let lastPrice = null;
+  const printPrice = () => {
+    const baseState = state.base;
+    const quoteState = state.quote;
+    if (!baseState || !quoteState) return;
+
+    const baseSlot = baseState.slot;
+    const quoteSlot = quoteState.slot;
+    if (baseSlot == null || quoteSlot == null) return;
+
+    if (baseSlot !== quoteSlot) {
+      writeLiveLine(renderSyncLine(baseSlot, quoteSlot));
+      return;
+    }
+
+    const baseAmountLocal = baseState.amount;
+    const quoteAmountLocal = quoteState.amount;
+    if (!baseAmountLocal.ui || !quoteAmountLocal.ui) return;
+
+    const price = quoteAmountLocal.ui / baseAmountLocal.ui;
+    const line = renderLiveLine({
+      price,
+      prevPrice: lastPrice,
+      quoteMint,
+      tokenMint,
+    });
+    writeLiveLine(`${line} | slot ${baseSlot}`);
+    lastPrice = price;
+  };
+
+  printPrice();
+
+  const abortController = new AbortController();
+  const stop = () => {
+    if (!abortController.signal.aborted) {
+      abortController.abort();
+    }
+  };
+
+  process.once('SIGINT', () => {
+    console.log('\nStopping...');
+    stop();
+  });
+
+  const baseStream = await rpcSubscriptions
+    .accountNotifications(addressFn(baseVault), {
+      commitment: 'confirmed',
+      encoding: 'jsonParsed',
+    })
+    .subscribe({ abortSignal: abortController.signal });
+
+  const quoteStream = await rpcSubscriptions
+    .accountNotifications(addressFn(quoteVault), {
+      commitment: 'confirmed',
+      encoding: 'jsonParsed',
+    })
+    .subscribe({ abortSignal: abortController.signal });
+
+  const consume = async (stream, label) => {
+    try {
+      for await (const notification of stream) {
+        const payload = extractAccountNotification(notification);
+        if (!payload) continue;
+        try {
+          const amount = parseTokenAmount(payload.account);
+          state[label] = {
+            amount,
+            slot: payload.slot ?? (state[label] && state[label].slot) ?? null,
+          };
+          printPrice();
+        } catch (err) {
+          logger.warn({ error: err }, 'Failed to parse live token amount');
+        }
+      }
+    } catch (err) {
+      if (!abortController.signal.aborted) {
+        logger.error({ error: err }, 'Subscription error');
+      }
+    }
+  };
+
+  await Promise.all([consume(baseStream, 'base'), consume(quoteStream, 'quote')]);
+}
+
 async function loadDataApiClient() {
   try {
     const mod = require('@solana-tracker/data-api');
@@ -340,6 +536,7 @@ async function main() {
 
   const clients = await createRpcClients();
   rpc = clients.rpc;
+  rpcSubscriptions = clients.rpcSubscriptions;
   addressFn = clients.address;
 
   const Client = await loadDataApiClient();
@@ -394,6 +591,12 @@ async function main() {
   const selected = pools[selectedIndex];
   if (!selected) {
     console.error('Selected pool not found.');
+    return;
+  }
+
+  const mode = await promptMode();
+  if (mode === 'live') {
+    await streamPoolPrice({ pool: selected, tokenMint });
     return;
   }
 

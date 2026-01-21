@@ -32,7 +32,7 @@ We use `dotenvx` to load (and optionally encrypt) env vars. Run scripts via the 
 To encrypt `.env`, use `dotenvx` and keep `.env.keys` private (it is gitignored).
 
 ## Scripts
-- `npm run app -- <TOKEN_MINT>` (fetch pools via Data API, pick one, decode, show price)
+- `npm run app -- <TOKEN_MINT>` (fetch pools via Data API, pick one, then choose snapshot or live pricing)
 - `npm run inspect -- <ACCOUNT_PUBKEY>`
 - `npm run decode:pool -- <POOL_STATE_PUBKEY> <MARKET> [idlPath]`
 - `npm run price:pool -- <POOL_STATE_PUBKEY> <TOKEN_MINT> <MARKET> [quoteMint] [idlPath]`
