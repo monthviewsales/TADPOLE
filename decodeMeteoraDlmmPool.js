@@ -1,21 +1,30 @@
-/* decodeCpmmPool.js */
+/* decodeMeteoraDlmmPool.js */
+try {
+  require('dotenv').config();
+} catch (e) {
+  // Optional dependency; use process.env if dotenv isn't installed.
+}
+
 const fs = require('fs');
 const path = require('path');
 const anchor = require('@coral-xyz/anchor');
 const { Connection, PublicKey } = require('@solana/web3.js');
 
-const RPC_URL =
-  'https://rpc-mainnet.solanatracker.io/?api_key=50985673-3bc4-4f8e-b5cd-aa9522cfcc4e';
+const RPC_URL = process.env.RPC_URL;
+if (!RPC_URL) {
+  console.error('Missing RPC_URL. Set it in .env or your shell environment.');
+  process.exit(1);
+}
 
 // usage: node decodeMeteoraDlmmPool.js <POOL_STATE_PUBKEY> [./idl/meteora-dlmm.json]
 async function main() {
   const poolStr = process.argv[2];
   if (!poolStr) {
-    console.error('Usage: node decodeCpmmPool.js <POOL_STATE_PUBKEY> [idlPath]');
+    console.error('Usage: node decodeMeteoraDlmmPool.js <POOL_STATE_PUBKEY> [idlPath]');
     process.exit(1);
   }
 
-  const idlPath = process.argv[3] || path.join(__dirname, 'idl', 'raydium_cp_swap.json');
+  const idlPath = process.argv[3] || path.join(__dirname, 'idl', 'meteora-dlmm.json');
   const idl = JSON.parse(fs.readFileSync(idlPath, 'utf8'));
 
   const connection = new Connection(RPC_URL, { commitment: 'confirmed' });
@@ -53,7 +62,7 @@ async function main() {
   if (!decoded) {
     console.log('\n❌ Could not decode with any IDL account type.');
     console.log('IDL accounts:', accountNames);
-    console.log('Tip: confirm you downloaded the IDL for the CPMM / CP-Swap program (CPMMoo…).');
+    console.log('Tip: confirm you downloaded the IDL for the Meteora DLMM program.');
     process.exit(2);
   }
 

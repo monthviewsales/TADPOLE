@@ -1,9 +1,18 @@
 // inspectAccount.js
+try {
+  require('dotenv').config();
+} catch (e) {
+  // Optional dependency; use process.env if dotenv isn't installed.
+}
+
 const { Connection, PublicKey } = require('@solana/web3.js');
 
 // Your SolanaTracker RPC
-const RPC_URL =
-  'https://rpc-mainnet.solanatracker.io/?api_key=50985673-3bc4-4f8e-b5cd-aa9522cfcc4e';
+const RPC_URL = process.env.RPC_URL;
+if (!RPC_URL) {
+  console.error('Missing RPC_URL. Set it in .env or your shell environment.');
+  process.exit(1);
+}
 
 const connection = new Connection(RPC_URL, {
   commitment: 'confirmed',
