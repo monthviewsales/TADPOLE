@@ -17,11 +17,14 @@ const {
   formatNumber,
   formatPrice,
   formatRatio,
-  formatDelta,
   normalizeSlot,
   renderLiveLine,
 } = require('./lib/format');
 const { pow10BigInt, toBigInt, getDecodedField } = require('./lib/bigint');
+const {
+  subscribeVaultBalances,
+  fetchVaultBalanceSnapshot,
+} = require('./lib/vaultStreamAdapter');
 
 const RPC_URL = process.env.RPC_URL;
 const DATA_API_KEY = process.env.SOLANATRACKER_DATA_API_KEY;
@@ -273,26 +276,40 @@ function selectVaults({ vaults, tokenMint, quoteToken }) {
   return { baseVault, quoteVault, quoteMint };
 }
 
-function parseTokenAmount(parsedAccount) {
-  if (!parsedAccount) {
-    throw new Error('Token account not found.');
+function pickFiniteNumber(...values) {
+  for (const value of values) {
+    if (Number.isFinite(value)) return value;
   }
-  const data = parsedAccount && parsedAccount.data;
-  const info = data && data.parsed && data.parsed.info;
-  const tokenAmount = info && info.tokenAmount;
-  if (!tokenAmount) {
-    throw new Error('Account is not a parsed SPL token account.');
-  }
-
-  const ui = Number(tokenAmount.uiAmountString ?? tokenAmount.uiAmount ?? 0);
-  return {
-    ui,
-    amount: tokenAmount.amount,
-    decimals: tokenAmount.decimals,
-  };
+  return null;
 }
 
-async function getPoolPrice({ pool, tokenMint, tokenDecimals, debug }) {
+function resolveVaultEncoding() {
+  const raw = process.env.VAULT_ENCODING;
+  if (raw === undefined || raw === null || String(raw).trim() === '') {
+    const message = 'VAULT_ENCODING not set; defaulting to "raw".';
+    console.log(message);
+    logger.info(message);
+    return 'raw';
+  }
+
+  const normalized = String(raw).trim().toLowerCase();
+  if (normalized === 'raw' || normalized === 'parsed') {
+    return normalized;
+  }
+
+  throw new Error(
+    `Invalid VAULT_ENCODING "${raw}". Allowed values: raw, parsed.`
+  );
+}
+
+async function getPoolPrice({
+  pool,
+  tokenMint,
+  tokenDecimals,
+  vaultEncoding,
+  debug,
+  quoteDecimals,
+}) {
   const decoder = selectDecoder(pool.market);
   if (!decoder) {
     throw new Error(`No decoder available for market "${pool.market}".`);
@@ -327,22 +344,39 @@ async function getPoolPrice({ pool, tokenMint, tokenDecimals, debug }) {
   const context = await getPoolVaultContext({ pool, tokenMint, debug });
   const { baseVault, quoteVault, quoteMint } = context;
 
-  const { baseAmount, quoteAmount } = await fetchVaultBalances({
-    baseVault,
-    quoteVault,
-    debugLabel: debug ? `${pool.market} vault balances` : null,
-  });
+  const [baseSnapshot, quoteSnapshot] = await Promise.all([
+    fetchVaultBalanceSnapshot({
+      rpc,
+      addressFn,
+      vault: baseVault,
+      commitment: 'confirmed',
+      encodingMode: vaultEncoding,
+      decimals: tokenDecimals,
+      mint: tokenMint,
+      debugLabel: debug ? `${pool.market} base vault snapshot` : null,
+    }),
+    fetchVaultBalanceSnapshot({
+      rpc,
+      addressFn,
+      vault: quoteVault,
+      commitment: 'confirmed',
+      encodingMode: vaultEncoding,
+      decimals: quoteDecimals,
+      mint: quoteMint,
+      debugLabel: debug ? `${pool.market} quote vault snapshot` : null,
+    }),
+  ]);
 
-  if (!baseAmount.ui || !quoteAmount.ui) {
+  if (!baseSnapshot.ui || !quoteSnapshot.ui) {
     throw new Error('Zero balance in one of the pool vaults.');
   }
 
-  const price = quoteAmount.ui / baseAmount.ui;
+  const price = quoteSnapshot.ui / baseSnapshot.ui;
   return {
     price,
     quoteMint,
-    baseAmount,
-    quoteAmount,
+    baseAmount: baseSnapshot,
+    quoteAmount: quoteSnapshot,
   };
 }
 
@@ -370,25 +404,6 @@ async function getPoolVaultContext({ pool, tokenMint, debug }) {
     quoteVault,
     quoteMint,
   };
-}
-
-async function fetchVaultBalances({ baseVault, quoteVault, debugLabel }) {
-  const accounts = await rpc
-    .getMultipleAccounts([addressFn(baseVault), addressFn(quoteVault)], {
-      commitment: 'confirmed',
-      encoding: 'jsonParsed',
-    })
-    .send();
-  if (debugLabel && shouldDebugRpc()) {
-    logger.debug(`rpc:getMultipleAccounts response (${debugLabel})`, { accounts });
-  }
-  const [baseInfo, quoteInfo] = accounts.value;
-  const slot = normalizeSlot(accounts.context && accounts.context.slot);
-
-  const baseAmount = parseTokenAmount(baseInfo);
-  const quoteAmount = parseTokenAmount(quoteInfo);
-
-  return { baseAmount, quoteAmount, slot };
 }
 
 async function promptSelection(count) {
@@ -446,7 +461,13 @@ function extractAccountNotification(notification) {
   return null;
 }
 
-async function streamPoolPrice({ pool, tokenMint, tokenDecimals }) {
+async function streamPoolPrice({
+  pool,
+  tokenMint,
+  tokenDecimals,
+  vaultEncoding,
+  quoteDecimals,
+}) {
   if (!rpcSubscriptions) {
     throw new Error('RPC subscriptions client is not initialized.');
   }
@@ -466,14 +487,35 @@ async function streamPoolPrice({ pool, tokenMint, tokenDecimals }) {
     tokenMint,
   });
 
-  const { baseAmount, quoteAmount, slot } = await fetchVaultBalances({
-    baseVault,
-    quoteVault,
-  });
+  const [baseSnapshot, quoteSnapshot] = await Promise.all([
+    fetchVaultBalanceSnapshot({
+      rpc,
+      addressFn,
+      vault: baseVault,
+      commitment: 'confirmed',
+      encodingMode: vaultEncoding,
+      decimals: tokenDecimals,
+      mint: tokenMint,
+    }),
+    fetchVaultBalanceSnapshot({
+      rpc,
+      addressFn,
+      vault: quoteVault,
+      commitment: 'confirmed',
+      encodingMode: vaultEncoding,
+      decimals: quoteDecimals,
+      mint: quoteMint,
+    }),
+  ]);
 
+  const now = Date.now();
   const state = {
-    base: { amount: baseAmount, slot },
-    quote: { amount: quoteAmount, slot },
+    base: { amount: baseSnapshot, slot: baseSnapshot.slot, lastUpdateAtMs: now },
+    quote: {
+      amount: quoteSnapshot,
+      slot: quoteSnapshot.slot,
+      lastUpdateAtMs: now,
+    },
   };
 
   console.log('\n--- Live Price ---');
@@ -482,10 +524,13 @@ async function streamPoolPrice({ pool, tokenMint, tokenDecimals }) {
   console.log('Press Ctrl+C to stop.');
   const renderSyncLine = (baseSlot, quoteSlot) =>
     `[${new Date().toISOString()}] syncing base slot ${
-      baseSlot ? baseSlot.toString() : 'n/a'
-    } / quote slot ${quoteSlot ? quoteSlot.toString() : 'n/a'}`;
+      baseSlot === null || baseSlot === undefined ? 'n/a' : baseSlot.toString()
+    } / quote slot ${
+      quoteSlot === null || quoteSlot === undefined ? 'n/a' : quoteSlot.toString()
+    }`;
 
   let lastPrice = null;
+  const DEBOUNCE_MS = 100;
   const printPrice = () => {
     const baseState = state.base;
     const quoteState = state.quote;
@@ -493,11 +538,19 @@ async function streamPoolPrice({ pool, tokenMint, tokenDecimals }) {
 
     const baseSlot = baseState.slot;
     const quoteSlot = quoteState.slot;
-    if (baseSlot == null || quoteSlot == null) return;
+    const baseHasSlot = baseSlot !== null && baseSlot !== undefined;
+    const quoteHasSlot = quoteSlot !== null && quoteSlot !== undefined;
 
-    if (baseSlot !== quoteSlot) {
-      writeLiveLine(renderSyncLine(baseSlot, quoteSlot));
-      return;
+    if (baseHasSlot && quoteHasSlot) {
+      if (baseSlot !== quoteSlot) {
+        writeLiveLine(renderSyncLine(baseSlot, quoteSlot));
+        return;
+      }
+    } else {
+      const delta = Math.abs(
+        baseState.lastUpdateAtMs - quoteState.lastUpdateAtMs
+      );
+      if (delta > DEBOUNCE_MS) return;
     }
 
     const baseAmountLocal = baseState.amount;
@@ -505,12 +558,13 @@ async function streamPoolPrice({ pool, tokenMint, tokenDecimals }) {
     if (!baseAmountLocal.ui || !quoteAmountLocal.ui) return;
 
     const price = quoteAmountLocal.ui / baseAmountLocal.ui;
+    const slotForRender = baseHasSlot && quoteHasSlot ? baseSlot : null;
     const line = renderLiveLine({
       price,
       prevPrice: lastPrice,
       quoteMint,
       tokenMint,
-      slot: baseSlot,
+      slot: slotForRender,
     });
     writeLiveLine(line);
     lastPrice = price;
@@ -530,35 +584,39 @@ async function streamPoolPrice({ pool, tokenMint, tokenDecimals }) {
     stop();
   });
 
-  const baseStream = await rpcSubscriptions
-    .accountNotifications(addressFn(baseVault), {
-      commitment: 'confirmed',
-      encoding: 'jsonParsed',
-    })
-    .subscribe({ abortSignal: abortController.signal });
+  const baseStream = await subscribeVaultBalances({
+    rpcSubscriptions,
+    addressFn,
+    rpc,
+    vault: baseVault,
+    commitment: 'confirmed',
+    encodingMode: vaultEncoding,
+    abortSignal: abortController.signal,
+    decimals: tokenDecimals,
+    mint: tokenMint,
+  });
 
-  const quoteStream = await rpcSubscriptions
-    .accountNotifications(addressFn(quoteVault), {
-      commitment: 'confirmed',
-      encoding: 'jsonParsed',
-    })
-    .subscribe({ abortSignal: abortController.signal });
+  const quoteStream = await subscribeVaultBalances({
+    rpcSubscriptions,
+    addressFn,
+    rpc,
+    vault: quoteVault,
+    commitment: 'confirmed',
+    encodingMode: vaultEncoding,
+    abortSignal: abortController.signal,
+    decimals: quoteDecimals,
+    mint: quoteMint,
+  });
 
   const consume = async (stream, label) => {
     try {
-      for await (const notification of stream) {
-        const payload = extractAccountNotification(notification);
-        if (!payload) continue;
-        try {
-          const amount = parseTokenAmount(payload.account);
-          state[label] = {
-            amount,
-            slot: payload.slot ?? (state[label] && state[label].slot) ?? null,
-          };
-          printPrice();
-        } catch (err) {
-          logger.warn('Failed to parse live token amount', { error: err });
-        }
+      for await (const update of stream) {
+        state[label] = {
+          amount: update,
+          slot: update.slot,
+          lastUpdateAtMs: Date.now(),
+        };
+        printPrice();
       }
     } catch (err) {
       if (!abortController.signal.aborted) {
@@ -792,10 +850,28 @@ async function main() {
   }
 
   const mode = await promptMode();
-  const tokenDecimals = selected.decimals ?? tokenInfo.token?.decimals ?? 0;
+  const tokenDecimals = pickFiniteNumber(
+    selected.decimals,
+    tokenInfo.token?.decimals,
+    0
+  );
+  const quoteDecimals = pickFiniteNumber(
+    selected.quoteDecimals,
+    selected.quoteTokenDecimals,
+    selected.quote_token_decimals,
+    selected.quoteMintDecimals,
+    selected.quote_mint_decimals
+  );
+  const vaultEncoding = resolveVaultEncoding();
 
   if (mode === 'live') {
-    await streamPoolPrice({ pool: selected, tokenMint, tokenDecimals });
+    await streamPoolPrice({
+      pool: selected,
+      tokenMint,
+      tokenDecimals,
+      vaultEncoding,
+      quoteDecimals,
+    });
     return;
   }
 
@@ -803,6 +879,8 @@ async function main() {
     pool: selected,
     tokenMint,
     tokenDecimals,
+    vaultEncoding,
+    quoteDecimals,
     debug: true,
   });
   const quoteShort = abbreviate(result.quoteMint || '');

@@ -11,6 +11,7 @@ const path = require('path');
 const anchor = require('@coral-xyz/anchor');
 const logger = require('../lib/logger');
 const { createRpcClients } = require('../lib/solanaRpc');
+const { fetchVaultBalanceSnapshot } = require('../lib/vaultStreamAdapter');
 
 const MANIFEST_PATH = path.join(__dirname, '..', 'idl', 'manifest.json');
 
@@ -81,25 +82,6 @@ function extractVaults(decoded, entry) {
   }
 
   return vaults;
-}
-
-function parseTokenAmount(parsedAccount) {
-  if (!parsedAccount) {
-    throw new Error('Token account not found.');
-  }
-  const data = parsedAccount && parsedAccount.data;
-  const info = data && data.parsed && data.parsed.info;
-  const tokenAmount = info && info.tokenAmount;
-  if (!tokenAmount) {
-    throw new Error('Account is not a parsed SPL token account.');
-  }
-
-  const ui = Number(tokenAmount.uiAmountString ?? tokenAmount.uiAmount ?? 0);
-  return {
-    ui,
-    amount: tokenAmount.amount,
-    decimals: tokenAmount.decimals,
-  };
 }
 
 function formatPrice(value) {
@@ -193,22 +175,33 @@ async function main() {
     process.exit(1);
   }
 
-  const accounts = await rpc
-    .getMultipleAccounts([addressFn(baseVault.vault), addressFn(quoteVault.vault)], {
+  const [baseSnapshot, quoteSnapshot] = await Promise.all([
+    fetchVaultBalanceSnapshot({
+      rpc,
+      addressFn,
+      vault: baseVault.vault,
       commitment: 'confirmed',
-      encoding: 'jsonParsed',
-    })
-    .send();
-  const [baseInfo, quoteInfo] = accounts.value;
-  const baseAmount = parseTokenAmount(baseInfo);
-  const quoteAmount = parseTokenAmount(quoteInfo);
+      encodingMode: 'parsed',
+      decimals: null,
+      mint: tokenMint,
+    }),
+    fetchVaultBalanceSnapshot({
+      rpc,
+      addressFn,
+      vault: quoteVault.vault,
+      commitment: 'confirmed',
+      encodingMode: 'parsed',
+      decimals: null,
+      mint: quoteMint,
+    }),
+  ]);
 
-  if (!baseAmount.ui || !quoteAmount.ui) {
+  if (!baseSnapshot.ui || !quoteSnapshot.ui) {
     console.error('Zero balance in one of the pool vaults.');
     process.exit(1);
   }
 
-  const price = quoteAmount.ui / baseAmount.ui;
+  const price = quoteSnapshot.ui / baseSnapshot.ui;
   console.log('pool:', poolStr);
   console.log('market:', market);
   console.log('decodedAs:', name);

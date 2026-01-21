@@ -34,7 +34,11 @@ npm install
 cp .env.sample .env
 ```
 
-The `.env` file is ignored by git. The scripts read `RPC_URL` and `SOLANATRACKER_DATA_API_KEY` from the environment.
+The `.env` file is ignored by git. The scripts read `RPC_URL`, `SOLANATRACKER_DATA_API_KEY`, and `VAULT_ENCODING` from the environment.
+
+`VAULT_ENCODING` controls how vault balances are decoded:
+- `raw` (default): subscribe with base64 and decode SPL token accounts locally
+- `parsed`: subscribe with `jsonParsed` and extract the parsed token amount
 
 We use `dotenvx` to load (and optionally encrypt) env vars. Run scripts via the npm commands (they wrap `dotenvx run --`) or call `dotenvx` directly.
 
