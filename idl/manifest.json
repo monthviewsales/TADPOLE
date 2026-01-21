@@ -27,6 +27,21 @@
     "mintFields": ["base_mint", "quote_mint"],
     "notes": "Pump.fun AMM"
   },
+  "pumpfun-amm": {
+    "idl": "idl/pump-amm.json",
+    "accountName": "Pool",
+    "vaultFields": ["pool_base_token_account", "pool_quote_token_account"],
+    "mintFields": ["base_mint", "quote_mint"],
+    "notes": "Pump.fun AMM (alias for pump-amm)"
+  },
+  "pumpfun": {
+    "idl": "idl/pumpfun.json",
+    "accountName": "BondingCurve",
+    "decoderType": "bondingCurve",
+    "virtualSolField": "virtual_sol_reserves",
+    "virtualTokenField": "virtual_token_reserves",
+    "notes": "Pump.fun bonding curve (virtual reserves)"
+  },
   "raydium-launchlab": {
     "idl": "idl/raydium-launchlab.json",
     "accountName": "PoolState",
