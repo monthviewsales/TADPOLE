@@ -119,11 +119,6 @@ function writeLiveLine(line) {
   process.stdout.write(line);
 }
 
-function formatRatio(buys, sells) {
-  if (!sells) return buys ? 'inf' : '0';
-  return (buys / sells).toFixed(2);
-}
-
 function truncate(value, width) {
   const s = String(value ?? '');
   if (s.length <= width) return s;
