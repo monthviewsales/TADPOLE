@@ -64,6 +64,7 @@ To encrypt `.env`, use `dotenvx` and keep `.env.keys` private (it is gitignored)
 - RPC clients are built with `@solana/kit` (HTTP + WSS) and log to `logs/app.log`.
 - `RPC_URL` is used for both HTTP and WebSocket connections (include the API key in the URL).
 - Log level is controlled by `NODE_ENV` (e.g., `development` for verbose logs).
+- Pool ticks: whenever a price line is printed (snapshot or live), the app also emits a normalized PoolTick JSON object to `logs/poolTicks.log` (one line per tick). This includes spot price, reserves, staleness, and rolling metrics (quote flow + depth score).
 
 ## Adding a new market
 1. Drop the IDL in `idl/<market>.json` (use the Data API `market` string).
