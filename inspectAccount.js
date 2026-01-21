@@ -5,19 +5,10 @@ try {
   // Optional dependency; use process.env if dotenv isn't installed.
 }
 
-const { Connection, PublicKey } = require('@solana/web3.js');
+const logger = require('./lib/logger');
+const { createRpcClients } = require('./lib/solanaRpc');
 
 // Your SolanaTracker RPC
-const RPC_URL = process.env.RPC_URL;
-if (!RPC_URL) {
-  console.error('Missing RPC_URL. Set it in .env or your shell environment.');
-  process.exit(1);
-}
-
-const connection = new Connection(RPC_URL, {
-  commitment: 'confirmed',
-});
-
 // usage: node inspectAccount.js <ACCOUNT_PUBKEY>
 async function main() {
   const pubkeyStr = process.argv[2];
@@ -26,28 +17,38 @@ async function main() {
     process.exit(1);
   }
 
-  const pubkey = new PublicKey(pubkeyStr);
+  const clients = await createRpcClients();
+  const rpc = clients.rpc;
+  const addressFn = clients.address;
 
-  const info = await connection.getAccountInfo(pubkey, {
-    commitment: 'confirmed',
-  });
+  const response = await rpc
+    .getAccountInfo(addressFn(pubkeyStr), { commitment: 'confirmed', encoding: 'base64' })
+    .send();
+  const info = response.value;
 
   if (!info) {
     console.log('Account not found');
     return;
   }
 
+  const rawData = Array.isArray(info.data) ? info.data[0] : info.data;
+  const dataBuffer = Buffer.from(rawData, 'base64');
+
   console.log('--- Account Info ---');
-  console.log('pubkey:', pubkey.toBase58());
-  console.log('lamports:', info.lamports);
-  console.log('owner:', info.owner.toBase58());
+  console.log('pubkey:', pubkeyStr);
+  console.log('lamports:', String(info.lamports));
+  console.log('owner:', String(info.owner));
   console.log('executable:', info.executable);
-  console.log('rentEpoch:', info.rentEpoch);
-  console.log('data length:', info.data.length);
+  console.log('rentEpoch:', String(info.rentEpoch));
+  console.log('data length:', dataBuffer.length);
 
   // Raw data (base64 → hex preview)
-  const hex = Buffer.from(info.data).toString('hex');
+  const hex = Buffer.from(dataBuffer).toString('hex');
   console.log('data (hex preview):', hex.slice(0, 200) + '...');
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  logger.error({ error: err }, 'inspectAccount error');
+  console.error(err);
+  process.exit(1);
+});

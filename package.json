@@ -5,15 +5,15 @@
   "type": "commonjs",
   "description": "POC for decoding Solana pool accounts and computing spot prices.",
   "scripts": {
+    "app": "node app.js",
     "inspect": "node inspectAccount.js",
-    "decode:cpmm": "node decodeCpmmPool.js",
-    "decode:dlmm": "node decodeMeteoraDlmmPool.js",
-    "price:raydium": "node getPriceFromRaydiumPool.js"
+    "decode:pool": "node tools/decodePool.js",
+    "price:pool": "node tools/priceFromPool.js"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.0",
-    "@solana-tracker/data-api": "^1.0.0",
-    "@solana/kit": "^1.0.0",
+    "@solana-tracker/data-api": "^0.2.0",
+    "@solana/kit": "^5.4.0",
     "@solana/web3.js": "^1.98.0",
     "dotenv": "^16.4.5",
     "winston": "^3.13.1"

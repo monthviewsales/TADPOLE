@@ -1,0 +1,37 @@
+{
+  "raydium-cpmm": {
+    "idl": "idl/raydium-cpmm.json",
+    "accountName": "PoolState",
+    "vaultFields": ["token_0_vault", "token_1_vault"],
+    "mintFields": ["token_0_mint", "token_1_mint"],
+    "notes": "Raydium CPMM (CP-Swap)"
+  },
+  "meteora-dlmm": {
+    "idl": "idl/meteora-dlmm.json",
+    "accountName": "LbPair",
+    "vaultFields": ["reserve_x", "reserve_y"],
+    "mintFields": ["token_x_mint", "token_y_mint"],
+    "notes": "Meteora DLMM"
+  },
+  "meteora-dyn-v2": {
+    "idl": "idl/meteora-dyn-v2.json",
+    "accountName": "Pool",
+    "vaultFields": ["token_a_vault", "token_b_vault"],
+    "mintFields": ["token_a_mint", "token_b_mint"],
+    "notes": "Meteora Dynamic V2"
+  },
+  "pump-amm": {
+    "idl": "idl/pump-amm.json",
+    "accountName": "Pool",
+    "vaultFields": ["pool_base_token_account", "pool_quote_token_account"],
+    "mintFields": ["base_mint", "quote_mint"],
+    "notes": "Pump.fun AMM"
+  },
+  "raydium-launchlab": {
+    "idl": "idl/raydium-launchlab.json",
+    "accountName": "PoolState",
+    "vaultFields": ["base_vault", "quote_vault"],
+    "mintFields": ["base_mint", "quote_mint"],
+    "notes": "Raydium LaunchLab"
+  }
+}

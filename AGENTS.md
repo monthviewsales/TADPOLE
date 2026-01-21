@@ -24,6 +24,16 @@
 - Check `docs/solanatracker/` before doing web searches; prefer local docs as the first source.
 - Data API usage is REST-only (no WebSocket/Datastream).
 - RPC work may use both HTTP and WebSocket connections; both share the same base URL and API key.
+- IDL files should be named after the Data API `market` value (e.g., `idl/raydium-cpmm.json`).
+- Decoding is driven by `idl/manifest.json`; add new markets there instead of adding new scripts.
+- Generic tooling scripts live in `tools/` (avoid market-specific scripts).
+- Logging uses `lib/logger.js` (Winston). `NODE_ENV` controls log verbosity; logs go to `logs/app.log`.
+- RPC clients are created via `lib/solanaRpc.js` using `@solana/kit` (HTTP + WSS).
+
+## Adding a new market (agent checklist)
+1. Add `idl/<market>.json` using the Data API `market` string.
+2. Update `idl/manifest.json` with `accountName`, `vaultFields`, and `mintFields`.
+3. Use `node app.js <TOKEN_MINT>` to validate decoding and price output.
 
 ## Documentation dirs
 - `docs/solanatracker/dataapi/`: fundamentals and examples for the SolanaTracker Data API SDK.
