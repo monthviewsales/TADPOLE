@@ -4,6 +4,7 @@
 - This is a lightweight Node.js POC for decoding Solana pool accounts and computing spot prices.
 - Scripts live in the repo root; Anchor IDLs live in `idl/`.
 - The RPC URL must come from `RPC_URL` in the environment (see `.env`).
+- SolanaTracker docs live under `docs/solanatracker/`.
 
 ## Primary goals (short-term)
 - Keep scripts runnable directly with `node`.
@@ -20,6 +21,13 @@
 - When adding dependencies, update `README.md` and add a `package.json` if needed.
 - Keep output and logs concise and structured.
 - Use ASCII-only edits unless the file already contains Unicode.
+- Check `docs/solanatracker/` before doing web searches; prefer local docs as the first source.
+- Data API usage is REST-only (no WebSocket/Datastream).
+- RPC work may use both HTTP and WebSocket connections; both share the same base URL and API key.
+
+## Documentation dirs
+- `docs/solanatracker/dataapi/`: fundamentals and examples for the SolanaTracker Data API SDK.
+- `docs/solanatracker/rpc/`: RPC documentation and local notes (added by the team).
 
 ## Quick commands
 - `node inspectAccount.js <ACCOUNT_PUBKEY>`
