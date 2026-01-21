@@ -25,6 +25,9 @@ const {
   subscribeVaultBalances,
   fetchVaultBalanceSnapshot,
 } = require('./lib/vaultStreamAdapter');
+const { createPoolTickBase, makePoolTick } = require('./lib/poolTick');
+const { createRollingMetrics } = require('./lib/rollingMetrics');
+const { createPoolTickLogger } = require('./lib/poolTickLogger');
 
 const RPC_URL = process.env.RPC_URL;
 const DATA_API_KEY = process.env.SOLANATRACKER_DATA_API_KEY;
@@ -49,9 +52,46 @@ let rpcSubscriptions = null;
 let addressFn = null;
 let getProgramDerivedAddressFn = null;
 let getAddressEncoderFn = null;
+const WSOL_MINT = 'So11111111111111111111111111111111111111112';
+const rollingMetrics = createRollingMetrics();
+const poolTickLogger = createPoolTickLogger();
+const lastCoherentSnapshot = new Map();
 
 function shouldDebugRpc() {
   return process.env.NODE_ENV === 'development';
+}
+
+function emptyMetrics() {
+  return {
+    netQuoteFlow_10s: null,
+    netQuoteFlow_60s: null,
+    netQuoteFlow_300s: null,
+    flowVol_10s: null,
+    flowVol_60s: null,
+    depthScore: null,
+  };
+}
+
+function handlePoolTick(tick) {
+  const lastTs = lastCoherentSnapshot.get(tick.poolId);
+  const stalenessMs = lastTs ? tick.tsMs - lastTs : 0;
+  lastCoherentSnapshot.set(tick.poolId, tick.tsMs);
+
+  const metrics = rollingMetrics.update({
+    poolId: tick.poolId,
+    tsMs: tick.tsMs,
+    quoteReserveUi: tick.quoteReserveUi,
+    baseReserveUi: tick.baseReserveUi,
+  });
+
+  const finalTick = {
+    ...tick,
+    stalenessMs,
+    metrics,
+  };
+
+  poolTickLogger.info(finalTick);
+  return finalTick;
 }
 
 function loadIdl(idlPath) {
@@ -333,11 +373,21 @@ async function getPoolPrice({
     const numerator = virtualSol * pow10BigInt(decimals);
     const denominator = virtualToken * 1_000_000_000n;
     const price = Number(numerator) / Number(denominator);
+    const realSol = toBigInt(getDecodedField(decoded, 'real_sol_reserves'));
+    const realToken = toBigInt(getDecodedField(decoded, 'real_token_reserves'));
+    const quoteReserveUi = Number(realSol) / 1_000_000_000;
+    const baseReserveUi = Number.isFinite(tokenDecimals)
+      ? Number(realToken) / 10 ** tokenDecimals
+      : null;
     return {
       price,
-      quoteMint: pool.quoteToken,
+      quoteMint: WSOL_MINT,
       baseAmount: null,
       quoteAmount: null,
+      baseReserveUi,
+      quoteReserveUi,
+      reserveSource: 'pump-real',
+      slot: null,
     };
   }
 
@@ -372,11 +422,23 @@ async function getPoolPrice({
   }
 
   const price = quoteSnapshot.ui / baseSnapshot.ui;
+  const slot =
+    baseSnapshot.slot !== null &&
+    baseSnapshot.slot !== undefined &&
+    quoteSnapshot.slot !== null &&
+    quoteSnapshot.slot !== undefined &&
+    baseSnapshot.slot === quoteSnapshot.slot
+      ? baseSnapshot.slot
+      : null;
   return {
     price,
     quoteMint,
     baseAmount: baseSnapshot,
     quoteAmount: quoteSnapshot,
+    baseReserveUi: baseSnapshot.ui,
+    quoteReserveUi: quoteSnapshot.ui,
+    reserveSource: 'vault',
+    slot,
   };
 }
 
@@ -487,6 +549,13 @@ async function streamPoolPrice({
     tokenMint,
   });
 
+  const identity = createPoolTickBase({
+    market: pool.market,
+    poolId: pool.poolId,
+    baseMint: tokenMint,
+    quoteMint,
+  });
+
   const [baseSnapshot, quoteSnapshot] = await Promise.all([
     fetchVaultBalanceSnapshot({
       rpc,
@@ -567,6 +636,19 @@ async function streamPoolPrice({
       slot: slotForRender,
     });
     writeLiveLine(line);
+    const tsMs = Date.now();
+    const tick = makePoolTick({
+      identity,
+      tsMs,
+      slot: slotForRender,
+      priceQuotePerBase: price,
+      baseReserveUi: baseAmountLocal.ui,
+      quoteReserveUi: quoteAmountLocal.ui,
+      reserveSource: 'vault',
+      stalenessMs: 0,
+      metrics: emptyMetrics(),
+    });
+    handlePoolTick(tick);
     lastPrice = price;
   };
 
@@ -663,6 +745,13 @@ async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder
   console.log(`Pool: ${pool.poolId}`);
   console.log('Press Ctrl+C to stop.');
 
+  const identity = createPoolTickBase({
+    market: pool.market,
+    poolId: pool.poolId,
+    baseMint: tokenMint,
+    quoteMint: WSOL_MINT,
+  });
+
   const curveAddress = await getBondingCurveAddress({
     pool,
     tokenMint,
@@ -700,6 +789,8 @@ async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder
     }
     const virtualSol = toBigInt(getDecodedField(decoded, decoder.virtualSolField));
     const virtualToken = toBigInt(getDecodedField(decoded, decoder.virtualTokenField));
+    const realSol = toBigInt(getDecodedField(decoded, 'real_sol_reserves'));
+    const realToken = toBigInt(getDecodedField(decoded, 'real_token_reserves'));
     if (virtualSol === 0n || virtualToken === 0n) {
       throw new Error('Zero virtual reserves in bonding curve.');
     }
@@ -707,14 +798,30 @@ async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder
     const numerator = virtualSol * pow10BigInt(decimals);
     const denominator = virtualToken * 1_000_000_000n;
     const price = Number(numerator) / Number(denominator);
+    const quoteReserveUi = Number(realSol) / 1_000_000_000;
+    const baseReserveUi = Number.isFinite(tokenDecimals)
+      ? Number(realToken) / 10 ** tokenDecimals
+      : null;
     const line = renderLiveLine({
       price,
       prevPrice: lastPrice,
-      quoteMint: pool.quoteToken,
+      quoteMint: WSOL_MINT,
       tokenMint,
       slot,
     });
     writeLiveLine(line);
+    const tick = makePoolTick({
+      identity,
+      tsMs: Date.now(),
+      slot,
+      priceQuotePerBase: price,
+      baseReserveUi,
+      quoteReserveUi,
+      reserveSource: 'pump-real',
+      stalenessMs: 0,
+      metrics: emptyMetrics(),
+    });
+    handlePoolTick(tick);
     lastPrice = price;
   };
 
@@ -738,21 +845,39 @@ async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder
         const decoded = decodePoolData(buffer, decoder);
         const virtualSol = toBigInt(getDecodedField(decoded, decoder.virtualSolField));
         const virtualToken = toBigInt(getDecodedField(decoded, decoder.virtualTokenField));
+        const realSol = toBigInt(getDecodedField(decoded, 'real_sol_reserves'));
+        const realToken = toBigInt(getDecodedField(decoded, 'real_token_reserves'));
         if (virtualSol === 0n || virtualToken === 0n) continue;
 
         const decimals = Number.isFinite(tokenDecimals) ? tokenDecimals : 0;
         const numerator = virtualSol * pow10BigInt(decimals);
         const denominator = virtualToken * 1_000_000_000n;
         const price = Number(numerator) / Number(denominator);
+        const quoteReserveUi = Number(realSol) / 1_000_000_000;
+        const baseReserveUi = Number.isFinite(tokenDecimals)
+          ? Number(realToken) / 10 ** tokenDecimals
+          : null;
 
         const line = renderLiveLine({
           price,
           prevPrice: lastPrice,
-          quoteMint: pool.quoteToken,
+          quoteMint: WSOL_MINT,
           tokenMint,
           slot: payload.slot,
         });
         writeLiveLine(line);
+        const tick = makePoolTick({
+          identity,
+          tsMs: Date.now(),
+          slot: payload.slot,
+          priceQuotePerBase: price,
+          baseReserveUi,
+          quoteReserveUi,
+          reserveSource: 'pump-real',
+          stalenessMs: 0,
+          metrics: emptyMetrics(),
+        });
+        handlePoolTick(tick);
         lastPrice = price;
       } catch (err) {
         logger.warn('Failed to decode bonding curve update', {
@@ -883,6 +1008,28 @@ async function main() {
     quoteDecimals,
     debug: true,
   });
+  const snapshotIdentity = createPoolTickBase({
+    market: selected.market || 'unknown',
+    poolId: selected.poolId,
+    baseMint: tokenMint,
+    quoteMint: result.quoteMint || WSOL_MINT,
+  });
+  const snapshotTick = makePoolTick({
+    identity: snapshotIdentity,
+    tsMs: Date.now(),
+    slot: result.slot ?? null,
+    priceQuotePerBase: result.price,
+    baseReserveUi:
+      result.baseReserveUi ??
+      (result.baseAmount ? result.baseAmount.ui : null),
+    quoteReserveUi:
+      result.quoteReserveUi ??
+      (result.quoteAmount ? result.quoteAmount.ui : null),
+    reserveSource: result.reserveSource || 'vault',
+    stalenessMs: 0,
+    metrics: emptyMetrics(),
+  });
+  handlePoolTick(snapshotTick);
   const quoteShort = abbreviate(result.quoteMint || '');
   console.log('\n--- Price ---');
   console.log(`Market: ${selected.market}`);
