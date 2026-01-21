@@ -44,7 +44,7 @@ To encrypt `.env`, use `dotenvx` and keep `.env.keys` private (it is gitignored)
   - the IDL file,
   - the primary account name,
   - and the vault/mint field names needed to derive price.
-- Supported markets (current): `raydium-cpmm`, `meteora-dlmm`, `meteora-dyn-v2`, `pump-amm`, `raydium-launchlab`.
+- Supported markets (current): `raydium-cpmm`, `meteora-dlmm`, `meteora-dyn-v2`, `pump-amm`, `pumpfun-amm`, `pumpfun`, `raydium-launchlab`.
 - RPC clients are built with `@solana/kit` (HTTP + WSS) and log to `logs/app.log`.
 - Log level is controlled by `NODE_ENV` (e.g., `development` for verbose logs).
 

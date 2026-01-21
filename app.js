@@ -12,6 +12,16 @@ const readline = require('readline');
 const anchor = require('@coral-xyz/anchor');
 const logger = require('./lib/logger');
 const { createRpcClients } = require('./lib/solanaRpc');
+const {
+  abbreviate,
+  formatNumber,
+  formatPrice,
+  formatRatio,
+  formatDelta,
+  normalizeSlot,
+  renderLiveLine,
+} = require('./lib/format');
+const { pow10BigInt, toBigInt, getDecodedField } = require('./lib/bigint');
 
 const RPC_URL = process.env.RPC_URL;
 const DATA_API_KEY = process.env.SOLANATRACKER_DATA_API_KEY;
@@ -34,6 +44,12 @@ let MANIFEST_CACHE = null;
 let rpc = null;
 let rpcSubscriptions = null;
 let addressFn = null;
+let getProgramDerivedAddressFn = null;
+let getAddressEncoderFn = null;
+
+function shouldDebugRpc() {
+  return process.env.NODE_ENV === 'development';
+}
 
 function loadIdl(idlPath) {
   if (IDL_CACHE.has(idlPath)) return IDL_CACHE.get(idlPath);
@@ -65,60 +81,32 @@ function pubkeyToString(value) {
   return String(value);
 }
 
-function abbreviate(value, head = 4, tail = 4) {
-  if (!value) return '';
-  if (value.length <= head + tail + 3) return value;
-  return `${value.slice(0, head)}...${value.slice(-tail)}`;
-}
-
-function formatNumber(value) {
-  if (value === null || value === undefined || Number.isNaN(value)) return '0';
-  return new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(
-    value
-  );
-}
-
-function formatPrice(value) {
-  if (value === null || value === undefined || Number.isNaN(value)) return '0';
-  if (value === 0) return '0';
-  const abs = Math.abs(value);
-  let fixed;
-  if (abs >= 1) fixed = value.toFixed(4);
-  else if (abs >= 0.01) fixed = value.toFixed(6);
-  else if (abs >= 0.0001) fixed = value.toFixed(8);
-  else fixed = value.toFixed(12);
-  return fixed.replace(/\.?0+$/, '');
-}
-
-function formatDelta(prev, next) {
-  if (prev === null || prev === undefined) return { diff: 'n/a', pct: 'n/a' };
-  const diff = next - prev;
-  const diffStr = `${diff >= 0 ? '+' : ''}${formatPrice(diff)}`;
-  if (!prev) return { diff: diffStr, pct: 'n/a' };
-  const pct = (diff / prev) * 100;
-  const pctStr = `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
-  return { diff: diffStr, pct: pctStr };
-}
-
-function normalizeSlot(slot) {
-  if (slot === null || slot === undefined) return null;
-  try {
-    return typeof slot === 'bigint' ? slot : BigInt(slot);
-  } catch (err) {
-    return null;
+async function getBondingCurveAddress({ pool, tokenMint, decoder }) {
+  const idl = loadIdl(decoder.idlPath);
+  const programId = idl.address;
+  if (!programId) {
+    throw new Error('Missing program ID in bonding curve IDL.');
   }
-}
 
-function renderLiveLine({ price, prevPrice, quoteMint, tokenMint, slot }) {
-  const quoteShort = abbreviate(quoteMint || '');
-  const tokenShort = abbreviate(tokenMint || '');
-  const { diff, pct } = formatDelta(prevPrice, price);
-  const ts = new Date().toISOString();
-  const slotPart =
-    slot !== undefined && slot !== null ? `slot ${slot.toString()} | ` : '';
-  return `[${ts}] ${slotPart}price per ${tokenShort}: ${formatPrice(
-    price
-  )} ${quoteShort} | Δ ${diff} (${pct})`;
+  const programAddress = addressFn(programId);
+  const mintAddress = addressFn(tokenMint);
+  const mintBytes = getAddressEncoderFn().encode(mintAddress);
+  const seeds = [Buffer.from('bonding-curve'), mintBytes];
+  const [pda] = await getProgramDerivedAddressFn({
+    programAddress,
+    seeds,
+  });
+
+  const pdaString = String(pda);
+  if (shouldDebugRpc() && pool && pool.poolId && pool.poolId !== pdaString) {
+    logger.debug('bonding curve PDA derived', {
+      poolId: pool.poolId,
+      derived: pdaString,
+      market: pool.market,
+    });
+  }
+
+  return pdaString;
 }
 
 function writeLiveLine(line) {
@@ -195,22 +183,13 @@ function selectDecoder(market) {
     accountName: entry.accountName,
     vaultFields: entry.vaultFields || [],
     mintFields: entry.mintFields || [],
+    decoderType: entry.decoderType || 'vaults',
+    virtualSolField: entry.virtualSolField,
+    virtualTokenField: entry.virtualTokenField,
   };
 }
 
-async function decodePoolState(poolId, decoder) {
-  if (!decoder.idlPath) {
-    throw new Error(`IDL file not found for ${decoder.name}.`);
-  }
-  const response = await rpc
-    .getAccountInfo(addressFn(poolId), { commitment: 'confirmed', encoding: 'base64' })
-    .send();
-  const info = response.value;
-  if (!info) throw new Error('Pool account not found');
-
-  const rawData = Array.isArray(info.data) ? info.data[0] : info.data;
-  const dataBuffer = Buffer.from(rawData, 'base64');
-
+function decodePoolData(dataBuffer, decoder) {
   const idl = loadIdl(decoder.idlPath);
   const coder = new anchor.BorshAccountsCoder(idl);
 
@@ -238,6 +217,24 @@ async function decodePoolState(poolId, decoder) {
   }
 
   return decoded;
+}
+
+async function decodePoolState(poolId, decoder, options = {}) {
+  if (!decoder.idlPath) {
+    throw new Error(`IDL file not found for ${decoder.name}.`);
+  }
+  const response = await rpc
+    .getAccountInfo(addressFn(poolId), { commitment: 'confirmed', encoding: 'base64' })
+    .send();
+  if (options.debugLabel && shouldDebugRpc()) {
+    logger.debug(`rpc:getAccountInfo response (${options.debugLabel})`, { response });
+  }
+  const info = response.value;
+  if (!info) throw new Error('Pool account not found');
+
+  const rawData = Array.isArray(info.data) ? info.data[0] : info.data;
+  const dataBuffer = Buffer.from(rawData, 'base64');
+  return decodePoolData(dataBuffer, decoder);
 }
 
 function extractVaults(decoded, decoder) {
@@ -300,13 +297,45 @@ function parseTokenAmount(parsedAccount) {
   };
 }
 
-async function getPoolPrice({ pool, tokenMint }) {
-  const context = await getPoolVaultContext({ pool, tokenMint });
+async function getPoolPrice({ pool, tokenMint, tokenDecimals, debug }) {
+  const decoder = selectDecoder(pool.market);
+  if (!decoder) {
+    throw new Error(`No decoder available for market "${pool.market}".`);
+  }
+
+  if (decoder.decoderType === 'bondingCurve') {
+    const curveAddress = await getBondingCurveAddress({
+      pool,
+      tokenMint,
+      decoder,
+    });
+    const decoded = await decodePoolState(curveAddress, decoder, {
+      debugLabel: debug ? `${pool.market} bondingCurve` : null,
+    });
+    const virtualSol = toBigInt(getDecodedField(decoded, decoder.virtualSolField));
+    const virtualToken = toBigInt(getDecodedField(decoded, decoder.virtualTokenField));
+    if (virtualSol === 0n || virtualToken === 0n) {
+      throw new Error('Zero virtual reserves in bonding curve.');
+    }
+    const decimals = Number.isFinite(tokenDecimals) ? tokenDecimals : 0;
+    const numerator = virtualSol * pow10BigInt(decimals);
+    const denominator = virtualToken * 1_000_000_000n;
+    const price = Number(numerator) / Number(denominator);
+    return {
+      price,
+      quoteMint: pool.quoteToken,
+      baseAmount: null,
+      quoteAmount: null,
+    };
+  }
+
+  const context = await getPoolVaultContext({ pool, tokenMint, debug });
   const { baseVault, quoteVault, quoteMint } = context;
 
   const { baseAmount, quoteAmount } = await fetchVaultBalances({
     baseVault,
     quoteVault,
+    debugLabel: debug ? `${pool.market} vault balances` : null,
   });
 
   if (!baseAmount.ui || !quoteAmount.ui) {
@@ -322,13 +351,15 @@ async function getPoolPrice({ pool, tokenMint }) {
   };
 }
 
-async function getPoolVaultContext({ pool, tokenMint }) {
+async function getPoolVaultContext({ pool, tokenMint, debug }) {
   const decoder = selectDecoder(pool.market);
   if (!decoder) {
     throw new Error(`No decoder available for market "${pool.market}".`);
   }
 
-  const decoded = await decodePoolState(pool.poolId, decoder);
+  const decoded = await decodePoolState(pool.poolId, decoder, {
+    debugLabel: debug ? `${pool.market} pool state` : null,
+  });
   const vaults = extractVaults(decoded, decoder);
 
   const { baseVault, quoteVault, quoteMint } = selectVaults({
@@ -346,13 +377,16 @@ async function getPoolVaultContext({ pool, tokenMint }) {
   };
 }
 
-async function fetchVaultBalances({ baseVault, quoteVault }) {
+async function fetchVaultBalances({ baseVault, quoteVault, debugLabel }) {
   const accounts = await rpc
     .getMultipleAccounts([addressFn(baseVault), addressFn(quoteVault)], {
       commitment: 'confirmed',
       encoding: 'jsonParsed',
     })
     .send();
+  if (debugLabel && shouldDebugRpc()) {
+    logger.debug(`rpc:getMultipleAccounts response (${debugLabel})`, { accounts });
+  }
   const [baseInfo, quoteInfo] = accounts.value;
   const slot = normalizeSlot(accounts.context && accounts.context.slot);
 
@@ -417,9 +451,19 @@ function extractAccountNotification(notification) {
   return null;
 }
 
-async function streamPoolPrice({ pool, tokenMint }) {
+async function streamPoolPrice({ pool, tokenMint, tokenDecimals }) {
   if (!rpcSubscriptions) {
     throw new Error('RPC subscriptions client is not initialized.');
+  }
+
+  const decoder = selectDecoder(pool.market);
+  if (!decoder) {
+    throw new Error(`No decoder available for market "${pool.market}".`);
+  }
+
+  if (decoder.decoderType === 'bondingCurve') {
+    await streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder });
+    return;
   }
 
   const { baseVault, quoteVault, quoteMint } = await getPoolVaultContext({
@@ -531,6 +575,148 @@ async function streamPoolPrice({ pool, tokenMint }) {
   await Promise.all([consume(baseStream, 'base'), consume(quoteStream, 'quote')]);
 }
 
+function getAccountDataBuffer(account) {
+  if (!account) return null;
+  const data = account.data;
+  if (Array.isArray(data)) {
+    const encoding = data[1] || 'base64';
+    return Buffer.from(data[0], encoding);
+  }
+  if (typeof data === 'string') {
+    return Buffer.from(data, 'base64');
+  }
+  if (data instanceof Uint8Array) {
+    return Buffer.from(data);
+  }
+  return null;
+}
+
+async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder }) {
+  const abortController = new AbortController();
+
+  const stop = () => {
+    if (!abortController.signal.aborted) {
+      abortController.abort();
+    }
+  };
+
+  process.once('SIGINT', () => {
+    console.log('\nStopping...');
+    stop();
+  });
+
+  console.log('\n--- Live Price ---');
+  console.log(`Market: ${pool.market}`);
+  console.log(`Pool: ${pool.poolId}`);
+  console.log('Press Ctrl+C to stop.');
+
+  const curveAddress = await getBondingCurveAddress({
+    pool,
+    tokenMint,
+    decoder,
+  });
+
+  let lastPrice = null;
+  const renderSnapshot = async () => {
+    const response = await rpc
+      .getAccountInfo(addressFn(curveAddress), { commitment: 'confirmed', encoding: 'base64' })
+      .send();
+    if (shouldDebugRpc()) {
+      logger.debug(`rpc:getAccountInfo response (${pool.market} bondingCurve live snapshot)`, {
+        response,
+      });
+    }
+    const info = response.value;
+    if (!info) {
+      throw new Error('Pool account not found.');
+    }
+    const slot = normalizeSlot(response.context && response.context.slot);
+    const rawData = Array.isArray(info.data) ? info.data[0] : info.data;
+    const buffer = Buffer.from(rawData, 'base64');
+    let decoded;
+    try {
+      decoded = decodePoolData(buffer, decoder);
+    } catch (err) {
+      logger.error('Failed to decode bonding curve snapshot', {
+        error: err,
+        market: pool.market,
+        poolId: pool.poolId,
+        curveAddress,
+      });
+      throw err;
+    }
+    const virtualSol = toBigInt(getDecodedField(decoded, decoder.virtualSolField));
+    const virtualToken = toBigInt(getDecodedField(decoded, decoder.virtualTokenField));
+    if (virtualSol === 0n || virtualToken === 0n) {
+      throw new Error('Zero virtual reserves in bonding curve.');
+    }
+    const decimals = Number.isFinite(tokenDecimals) ? tokenDecimals : 0;
+    const numerator = virtualSol * pow10BigInt(decimals);
+    const denominator = virtualToken * 1_000_000_000n;
+    const price = Number(numerator) / Number(denominator);
+    const line = renderLiveLine({
+      price,
+      prevPrice: lastPrice,
+      quoteMint: pool.quoteToken,
+      tokenMint,
+      slot,
+    });
+    writeLiveLine(line);
+    lastPrice = price;
+  };
+
+  await renderSnapshot();
+
+  const stream = await rpcSubscriptions
+    .accountNotifications(addressFn(curveAddress), {
+      commitment: 'confirmed',
+      encoding: 'base64',
+    })
+    .subscribe({ abortSignal: abortController.signal });
+
+  try {
+    for await (const notification of stream) {
+      const payload = extractAccountNotification(notification);
+      if (!payload) continue;
+      const buffer = getAccountDataBuffer(payload.account);
+      if (!buffer) continue;
+
+      try {
+        const decoded = decodePoolData(buffer, decoder);
+        const virtualSol = toBigInt(getDecodedField(decoded, decoder.virtualSolField));
+        const virtualToken = toBigInt(getDecodedField(decoded, decoder.virtualTokenField));
+        if (virtualSol === 0n || virtualToken === 0n) continue;
+
+        const decimals = Number.isFinite(tokenDecimals) ? tokenDecimals : 0;
+        const numerator = virtualSol * pow10BigInt(decimals);
+        const denominator = virtualToken * 1_000_000_000n;
+        const price = Number(numerator) / Number(denominator);
+
+        const line = renderLiveLine({
+          price,
+          prevPrice: lastPrice,
+          quoteMint: pool.quoteToken,
+          tokenMint,
+          slot: payload.slot,
+        });
+        writeLiveLine(line);
+        lastPrice = price;
+      } catch (err) {
+        logger.warn('Failed to decode bonding curve update', {
+          error: err,
+          market: pool.market,
+          poolId: pool.poolId,
+          curveAddress,
+        });
+      }
+    }
+  } catch (err) {
+    if (!abortController.signal.aborted) {
+      logger.error('Bonding curve subscription error', { error: err });
+    }
+  }
+}
+
 async function loadDataApiClient() {
   try {
     const mod = require('@solana-tracker/data-api');
@@ -552,6 +738,8 @@ async function main() {
   rpc = clients.rpc;
   rpcSubscriptions = clients.rpcSubscriptions;
   addressFn = clients.address;
+  getProgramDerivedAddressFn = clients.getProgramDerivedAddress;
+  getAddressEncoderFn = clients.getAddressEncoder;
 
   const Client = await loadDataApiClient();
   if (!Client) {
@@ -609,12 +797,19 @@ async function main() {
   }
 
   const mode = await promptMode();
+  const tokenDecimals = selected.decimals ?? tokenInfo.token?.decimals ?? 0;
+
   if (mode === 'live') {
-    await streamPoolPrice({ pool: selected, tokenMint });
+    await streamPoolPrice({ pool: selected, tokenMint, tokenDecimals });
     return;
   }
 
-  const result = await getPoolPrice({ pool: selected, tokenMint });
+  const result = await getPoolPrice({
+    pool: selected,
+    tokenMint,
+    tokenDecimals,
+    debug: true,
+  });
   const quoteShort = abbreviate(result.quoteMint || '');
   console.log('\n--- Price ---');
   console.log(`Market: ${selected.market}`);
