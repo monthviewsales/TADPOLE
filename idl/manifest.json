@@ -27,6 +27,13 @@
     "mintFields": ["base_mint", "quote_mint"],
     "notes": "Pump.fun AMM"
   },
+  "pumpfun-amm": {
+    "idl": "idl/pump-amm.json",
+    "accountName": "Pool",
+    "vaultFields": ["pool_base_token_account", "pool_quote_token_account"],
+    "mintFields": ["base_mint", "quote_mint"],
+    "notes": "Pump.fun AMM (alias for pump-amm)"
+  },
   "raydium-launchlab": {
     "idl": "idl/raydium-launchlab.json",
     "accountName": "PoolState",
