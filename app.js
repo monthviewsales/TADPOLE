@@ -100,12 +100,15 @@ function formatDelta(prev, next) {
   return { diff: diffStr, pct: pctStr };
 }
 
-function renderLiveLine({ price, prevPrice, quoteMint, tokenMint }) {
+function renderLiveLine({ price, prevPrice, quoteMint, tokenMint, slot }) {
   const quoteShort = abbreviate(quoteMint || '');
   const tokenShort = abbreviate(tokenMint || '');
   const { diff, pct } = formatDelta(prevPrice, price);
   const ts = new Date().toISOString();
-  return `[${ts}] price ${formatPrice(price)} ${quoteShort} per ${tokenShort} | Δ ${diff} (${pct})`;
+  const slotPart = slot !== undefined && slot !== null ? `slot ${slot} | ` : '';
+  return `[${ts}] ${slotPart}price per ${tokenShort}: ${formatPrice(
+    price
+  )} ${quoteShort} | Δ ${diff} (${pct})`;
 }
 
 function writeLiveLine(line) {
@@ -458,8 +461,9 @@ async function streamPoolPrice({ pool, tokenMint }) {
       prevPrice: lastPrice,
       quoteMint,
       tokenMint,
+      slot: baseSlot,
     });
-    writeLiveLine(`${line} | slot ${baseSlot}`);
+    writeLiveLine(line);
     lastPrice = price;
   };
 
