@@ -1,6 +1,6 @@
 {
   "name": "poolscanner-poc",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "commonjs",
   "description": "POC for decoding Solana pool accounts and computing spot prices.",
