@@ -1,0 +1,700 @@
+{
+	"token": {
+		"name": "U.S Oil",
+		"symbol": "USOR",
+		"mint": "USoRyaQjch6E18nCdDvWoRgTo6osQs9MUd8JXEsspWR",
+		"uri": "https://gateway.bundlr.network/0ZzdDQyLFIhoDSWaLfypUn8lQgq9qW_mm35CRW_bfv8",
+		"decimals": 6,
+		"isMutable": true,
+		"description": "America's Oil Reserve for the Digital Age",
+		"image": "https://image.solanatracker.io/proxy?url=https%3A%2F%2Fgateway.bundlr.network%2FWDxuZU3VoZVI5wDJ6MaMNNhisrt3GpKLKcBz_Von6Oc",
+		"properties": {
+			"files": [
+				{
+					"type": "image/jpeg",
+					"uri": "https://gateway.bundlr.network/WDxuZU3VoZVI5wDJ6MaMNNhisrt3GpKLKcBz_Von6Oc"
+				}
+			],
+			"category": "image"
+		},
+		"hasFileMetaData": true,
+		"strictSocials": {
+			"website": "https://U.S"
+		},
+		"creation": {
+			"creator": "9B6FJ6jZJukPwMrXeCntCJXqdzgKFPaTupsoqVct6Hhf",
+			"created_tx": "2DBqke3PBKPV3JHuhjvQQkJZFsWgbjmN96dmKZ6gjLP4Bq9K9facRxq7FnyKWE57rBz1iZwVfqTzhswmuqipWnRq",
+			"created_time": 1767912575
+		}
+	},
+	"pools": [
+		{
+			"poolId": "ECuy1H7P9hoa4BMQzppDhox64quS8MsfucnTQtNWjsRb",
+			"liquidity": {
+				"quote": 8738.147275287109,
+				"usd": 1100304.7211149463
+			},
+			"price": {
+				"quote": 0.000380589606,
+				"usd": 0.04792372193970809
+			},
+			"tokenSupply": 999998653.173244,
+			"lpBurn": 92.91,
+			"tokenAddress": "USoRyaQjch6E18nCdDvWoRgTo6osQs9MUd8JXEsspWR",
+			"marketCap": {
+				"quote": 380589.09341173555,
+				"usd": 47923657.39475714
+			},
+			"market": "meteora-dyn-v2",
+			"meteoraDynV2": {
+				"baseLiquidity": {
+					"base": 8550175.387985,
+					"usd": 409756.2278295289
+				},
+				"quoteLiquidity": {
+					"quote": 5484.039393143,
+					"usd": 690548.4932854174
+				}
+			},
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 6,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"deployer": "9B6FJ6jZJukPwMrXeCntCJXqdzgKFPaTupsoqVct6Hhf",
+			"lastUpdated": 1768954412844,
+			"createdAt": 1767912575204,
+			"txns": {
+				"buys": 128233,
+				"sells": 32620,
+				"total": 160853,
+				"volume": 25514194,
+				"volume24h": 4778131
+			}
+		},
+		{
+			"poolId": "J3X7qPfL5ZDbHtmMwnvDtvfK8214mtvye8hHFimkXf9T",
+			"liquidity": {
+				"quote": 372.130862797,
+				"usd": 53780.359844812185
+			},
+			"price": {
+				"quote": 0.0004134919730574996,
+				"usd": 0.05206677751758907
+			},
+			"tokenSupply": 999998653.173244,
+			"lpBurn": 0,
+			"tokenAddress": "USoRyaQjch6E18nCdDvWoRgTo6osQs9MUd8JXEsspWR",
+			"marketCap": {
+				"quote": 413491.4161554469,
+				"usd": 52066707.392660014
+			},
+			"market": "meteora-dlmm",
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 6,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"deployer": "6zbJGdKJYmaZEMEuFQrZPHWcUfWu5bJ6D2BY1toa7n8U",
+			"lastUpdated": 1768954412844,
+			"createdAt": 1768319839376,
+			"txns": {
+				"buys": 57682,
+				"sells": 34487,
+				"total": 92169,
+				"volume": 15734872,
+				"volume24h": 4469688
+			}
+		},
+		{
+			"poolId": "pPgRUR2Thah841TNnU7fu5BnWnGDeJd1QDi3eRGHDe7",
+			"liquidity": {
+				"quote": 2.476549859,
+				"usd": 339.1433986905119
+			},
+			"price": {
+				"quote": 0.00019171317164278767,
+				"usd": 0.02417471838780167
+			},
+			"tokenSupply": 999998653.81111,
+			"lpBurn": 0,
+			"tokenAddress": "USoRyaQjch6E18nCdDvWoRgTo6osQs9MUd8JXEsspWR",
+			"marketCap": {
+				"quote": 191712.91356064595,
+				"usd": 24174685.84406436
+			},
+			"market": "meteora-dlmm",
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 6,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"deployer": "Di6ohCBPnm3yYErdMyoAbbvAqoD2zNUHTrrrTPgxH23D",
+			"lastUpdated": 1768950792931,
+			"createdAt": 1768291885402,
+			"txns": {
+				"buys": 2999,
+				"sells": 2768,
+				"total": 5767,
+				"volume": 1111783,
+				"volume24h": 274
+			}
+		},
+		{
+			"poolId": "EpEa6ZvZSJqjTWi7WbTykYzwxsqTbNMqRwh3e5otkHuw",
+			"liquidity": {
+				"quote": 0.19194401644575743,
+				"usd": 24.169529401539243
+			},
+			"price": {
+				"quote": 0.000413772268,
+				"usd": 0.05210207216745267
+			},
+			"tokenSupply": 999998653.173244,
+			"lpBurn": 0,
+			"tokenAddress": "USoRyaQjch6E18nCdDvWoRgTo6osQs9MUd8JXEsspWR",
+			"marketCap": {
+				"quote": 413771.71072043857,
+				"usd": 52102001.99498783
+			},
+			"market": "meteora-dyn-v2",
+			"meteoraDynV2": {
+				"baseLiquidity": {
+					"base": 232.379289,
+					"usd": 12.10744248569934
+				},
+				"quoteLiquidity": {
+					"quote": 0.095791911,
+					"usd": 12.062086915839906
+				}
+			},
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 6,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"deployer": "44bfQrf5yJNGqeuXbbWHfYqxxvKuQoCkzCJHfL1Q1EKH",
+			"lastUpdated": 1768954412827,
+			"createdAt": 1768942782168
+		},
+		{
+			"poolId": "9ku941sKUoyjdbtjRf89yfSyni6oUk4wxEfesYFcL89i",
+			"liquidity": {
+				"quote": 0.18707110140555108,
+				"usd": 23.555933492084296
+			},
+			"price": {
+				"quote": 0.000388186175,
+				"usd": 0.04888027948808162
+			},
+			"tokenSupply": 999998653.173244,
+			"lpBurn": 0,
+			"tokenAddress": "USoRyaQjch6E18nCdDvWoRgTo6osQs9MUd8JXEsspWR",
+			"marketCap": {
+				"quote": 388185.6521804732,
+				"usd": 48880213.654813364
+			},
+			"market": "meteora-dyn-v2",
+			"meteoraDynV2": {
+				"baseLiquidity": {
+					"base": 281.928452,
+					"usd": 13.780741529402203
+				},
+				"quoteLiquidity": {
+					"quote": 0.077630374,
+					"usd": 9.775191962682094
+				}
+			},
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 6,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"deployer": "9TLUybDHkiUGm4zG1fKAUSHHb4NHtoQ46gqz211RHxVb",
+			"lastUpdated": 1768954412841,
+			"createdAt": 1768453598676
+		},
+		{
+			"poolId": "BjD5wX5Kq9uyYLLkLzTDJn8UHiF7zkqjVjgfk13HXDHV",
+			"liquidity": {
+				"quote": 0.14003754334977808,
+				"usd": 17.6302885367371
+			},
+			"price": {
+				"quote": 0.000354017096,
+				"usd": 0.04456964468327092
+			},
+			"tokenSupply": 999998653.173244,
+			"lpBurn": 0,
+			"tokenAddress": "USoRyaQjch6E18nCdDvWoRgTo6osQs9MUd8JXEsspWR",
+			"marketCap": {
+				"quote": 354016.619200303,
+				"usd": 44569584.655680954
+			},
+			"market": "meteora-dyn-v2",
+			"meteoraDynV2": {
+				"baseLiquidity": {
+					"base": 188.207053,
+					"usd": 8.388321479095538
+				},
+				"quoteLiquidity": {
+					"quote": 0.073409029,
+					"usd": 9.241967057641563
+				}
+			},
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 6,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"deployer": "Fe1uxWjWFCDq6RLYmiP5K2ZEcQVkCiUKSnaD7kgEX99R",
+			"lastUpdated": 1768954292483,
+			"createdAt": 1768893870066
+		},
+		{
+			"poolId": "ArFPv5BHnhzog7heWhNWHsySjrhmGGDw4HMvSdDrDpj7",
+			"liquidity": {
+				"quote": 0.05704369192411088,
+				"usd": 7.688420442927189
+			},
+			"price": {
+				"quote": 0.00010500944,
+				"usd": 0.014153304212329347
+			},
+			"tokenSupply": 999998980.419178,
+			"lpBurn": 0,
+			"tokenAddress": "USoRyaQjch6E18nCdDvWoRgTo6osQs9MUd8JXEsspWR",
+			"marketCap": {
+				"quote": 105009.33293438885,
+				"usd": 14153289.781891804
+			},
+			"market": "meteora-dyn-v2",
+			"meteoraDynV2": {
+				"baseLiquidity": {
+					"base": 263.701177,
+					"usd": 3.7322429792303065
+				},
+				"quoteLiquidity": {
+					"quote": 0.029352579,
+					"usd": 3.956177463696882
+				}
+			},
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 6,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"deployer": "9qdiDGhXrGqPN4CTGvyKwFKHrgJSGn836cjkVcGfPd6N",
+			"lastUpdated": 1768856493778,
+			"createdAt": 1768839982893
+		},
+		{
+			"poolId": "2vC25YV68LyPrt7H9mLPVGTgqftzngZAMuamG3kWdSyR",
+			"liquidity": {
+				"quote": 0.009624124,
+				"usd": 1.2118666280373174
+			},
+			"price": {
+				"quote": 0.00018545321704194445,
+				"usd": 0.023352210008442745
+			},
+			"tokenSupply": 999998653.173244,
+			"lpBurn": 100,
+			"tokenAddress": "USoRyaQjch6E18nCdDvWoRgTo6osQs9MUd8JXEsspWR",
+			"marketCap": {
+				"quote": 185452.96726858974,
+				"usd": 23352178.55706149
+			},
+			"market": "raydium-cpmm",
+			"quoteToken": "So11111111111111111111111111111111111111112",
+			"decimals": 6,
+			"security": {
+				"freezeAuthority": null,
+				"mintAuthority": null
+			},
+			"deployer": "9TLUybDHkiUGm4zG1fKAUSHHb4NHtoQ46gqz211RHxVb",
+			"lastUpdated": 1768954412876,
+			"createdAt": 1768780839863
+		}
+	],
+	"events": {
+		"1m": {
+			"priceChangePercentage": -0.59112743770138
+		},
+		"5m": {
+			"priceChangePercentage": -7.4900807813711
+		},
+		"15m": {
+			"priceChangePercentage": 10.97794682719
+		},
+		"30m": {
+			"priceChangePercentage": 19.212247289208
+		},
+		"1h": {
+			"priceChangePercentage": 18.748831501325
+		},
+		"2h": {
+			"priceChangePercentage": 35.359317276513
+		},
+		"3h": {
+			"priceChangePercentage": 66.590377451527
+		},
+		"4h": {
+			"priceChangePercentage": 66.932180072839
+		},
+		"5h": {
+			"priceChangePercentage": 78.785160356704
+		},
+		"6h": {
+			"priceChangePercentage": 78.548768536702
+		},
+		"12h": {
+			"priceChangePercentage": 179.18868435075
+		},
+		"24h": {
+			"priceChangePercentage": 207.64561101675
+		}
+	},
+	"risk": {
+		"snipers": {
+			"count": 4,
+			"totalBalance": 3.250493,
+			"totalPercentage": 0,
+			"wallets": [
+				{
+					"wallet": "CYQTmuT9jUt4ZAmkNmrUNQAscuVz18h5nWedoo9EsN8h",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "AE7oQxCCzeaMhsm6SJXsaWGf7q6GzEpFM9z8LyxmNTZT",
+					"balance": 3.250493,
+					"percentage": 0
+				},
+				{
+					"wallet": "8u8qCaWkVakNkqNk7acqQ8ALYbxBqoyBX6kPNKuPoM88",
+					"balance": 0,
+					"percentage": 0
+				},
+				{
+					"wallet": "9Htc84ve21vY1QzGsFoVSwWe7yapQG7ZE6vyMrZX5xat",
+					"balance": 0,
+					"percentage": 0
+				}
+			]
+		},
+		"insiders": {
+			"count": 0,
+			"totalBalance": 0,
+			"totalPercentage": 0,
+			"wallets": []
+		},
+		"bundlers": {
+			"count": 98,
+			"totalBalance": 54038784.53702401,
+			"totalPercentage": 5.4038,
+			"totalInitialBalance": 0,
+			"totalInitialPercentage": 0,
+			"wallets": [
+				{
+					"wallet": "5ztXE745MGNJJcqL9ruP3BDkddKLpqv16fbsiGibfWYv",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 12115004.383219,
+					"percentage": 1.2115020700053027,
+					"bundleTime": 1768943243873
+				},
+				{
+					"wallet": "BuckZjA4bE3UaW9unxBGycfP8XtRQY6neHZsH1ruVGgo",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 7718251.554654,
+					"percentage": 0.7718261949815705,
+					"bundleTime": 1768953297425
+				},
+				{
+					"wallet": "EKZQz74aXnwvKuXJmsdsi5zfjZP9NHnY5LxvJjdXp7Rp",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 5910910.924618,
+					"percentage": 0.5910918885601708,
+					"bundleTime": 1768936518006
+				},
+				{
+					"wallet": "3zTUE7A8w22X9CbeUyv92gbrAKgSjywX4qkS2PjoNBGZ",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 3826015.302243,
+					"percentage": 0.3826020455229718,
+					"bundleTime": 1768335968122
+				},
+				{
+					"wallet": "3HnftZqeawPBH5KCivKqfYs8SnZkzJMi6WSuJqcjtrix",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 3804588.838825,
+					"percentage": 0.38045931277198186,
+					"bundleTime": 1768928261747
+				},
+				{
+					"wallet": "BM9CcyErJcu2mjrFvUsRRrD3snGeHDDVirJLvL6EjvMN",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 3278413.057318,
+					"percentage": 0.327841747277837,
+					"bundleTime": 1768826480035
+				},
+				{
+					"wallet": "EdhBgJBX89geaGNVCh8KbqFqtUznahGoJfDbBSyAHZup",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 3195162.411477,
+					"percentage": 0.31951667148130214,
+					"bundleTime": 1768897843179
+				},
+				{
+					"wallet": "pYNWhBXUrkThAtMx6hHYxVuePyHjCGkMV9tn1dsvqK9",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 2862336.06712,
+					"percentage": 0.28623,
+					"bundleTime": 1768923751306
+				},
+				{
+					"wallet": "4TJtSdutz9sggwK2ftyxZSHxptiakj7BoExL6WzGqqk9",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 2138095.309142,
+					"percentage": 0.21380981873445876,
+					"bundleTime": 1768705878525
+				},
+				{
+					"wallet": "4tzJxgDDpJvWPGPuafedmftNu2aQVJjzxM32nCK9fbxt",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 1348234.190849,
+					"percentage": 0.1348236006689327,
+					"bundleTime": 1768950379322
+				},
+				{
+					"wallet": "9xoYuvEdP2dvZtJiBe7gKw4bgW5frLcMzNgC7KySdRWB",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 1211084.468202,
+					"percentage": 0.12110855950853806,
+					"bundleTime": 1768579618597
+				},
+				{
+					"wallet": "DDRSp4QLbsVgAmZKJLdz7UucRPr3znTWstrDw4Ae8auF",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 1200909.360857,
+					"percentage": 0.12009107091803264,
+					"bundleTime": 1768898054321
+				},
+				{
+					"wallet": "42ZHkWgAWjEnJt9uevfCnCsCRBRoDcnKTPUTGgH5o3SX",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 1197514.359891,
+					"percentage": 0.11975155596706293,
+					"bundleTime": 1768652735960
+				},
+				{
+					"wallet": "EgtskGZ3J2ZDxCsAMzfaiVt8G4xnFb37CE6kJ8gBDtSm",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 1080033.475077,
+					"percentage": 0.10800349296969407,
+					"bundleTime": 1768493340106
+				},
+				{
+					"wallet": "DsG37vosubAAXAL24VRbNCe3nUUhwHC9CUzEWf2qrCro",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 744111.993422,
+					"percentage": 0.07441129956132919,
+					"bundleTime": 1768927811712
+				},
+				{
+					"wallet": "3siZqZSvZC9B6MncWahwWiPVEfTPzMUSFHMfL8opoL6z",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 682047.74771,
+					"percentage": 0.06820486658763365,
+					"bundleTime": 1768947609726
+				},
+				{
+					"wallet": "7cvtMtMUo1SaFbXN4UezQAjXzFGY3MPmpscYvwrveDii",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 590618.905408,
+					"percentage": 0.05906,
+					"bundleTime": 1768871600872
+				},
+				{
+					"wallet": "EG9VKt4Q68xgFt53RENZSrkUkUpCWQ2KfEjsmuHP7AUm",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 343333.013758,
+					"percentage": 0.03433,
+					"bundleTime": 1768674586607
+				},
+				{
+					"wallet": "3eddCJqVcK15t5NLr8WLL381BHHJYjpPv8tmnoHZN3Lw",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 311262.720297,
+					"percentage": 0.03113,
+					"bundleTime": 1768878308419
+				},
+				{
+					"wallet": "2snHHreXbpJ7UwZxPe37gnUNf7Wx7wv6UKDSR2JckKuS",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 277653.23226,
+					"percentage": 0.02777,
+					"bundleTime": 1768297238919
+				},
+				{
+					"wallet": "2DDH6v4SBBc5v6G6gfxUMp4QxzkBoNVDMZXX9Lu47gUJ",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 49315.648598,
+					"percentage": 0.00493,
+					"bundleTime": 1768507507379
+				},
+				{
+					"wallet": "HyYGV6nph8kDL664aojBqo24Ve8Q7Yq1KBWx2bh5mGU2",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 21838.670615,
+					"percentage": 0.00218,
+					"bundleTime": 1768941316812
+				},
+				{
+					"wallet": "BKu3njCmSKMfEEo1pzCVHCi3ZvSG1ceKQZHZDnNn35Ck",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 21093.252497,
+					"percentage": 0.00211,
+					"bundleTime": 1768660445733
+				},
+				{
+					"wallet": "ekm5ekrpewYah2Licp5Z1AK6mXNiKcVruus9JwgJ7KW",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 14176.21483,
+					"percentage": 0.00142,
+					"bundleTime": 1768515488551
+				},
+				{
+					"wallet": "9nnDiMYEkReQA6zqYRTmF1DC8JpML5ifQa4tPEQvVaGV",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 13729.697453,
+					"percentage": 0.00137,
+					"bundleTime": 1768183521435
+				},
+				{
+					"wallet": "GUWLgE88tfbRomDivqX2ZZPuW66utSGY8x7QEjcQSNrK",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 11430.25861,
+					"percentage": 0.00114,
+					"bundleTime": 1768847140003
+				},
+				{
+					"wallet": "4rhJef6CKckKw7T6aBRQzmHghKET5FXnxiRZDBbvPDwx",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 10924.128152,
+					"percentage": 0.00109,
+					"bundleTime": 1768939177498
+				},
+				{
+					"wallet": "DvCz6wknVVPRMWjFSza3RkYaPnAHAdQtBoGn7j4NFxbJ",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 8319.012911,
+					"percentage": 0.0008,
+					"bundleTime": 1768853094440
+				},
+				{
+					"wallet": "HuNp7ceh8kic2nHMgEsv1dkQ1isyXimDM2iAyEzGr9UC",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 6976.401551,
+					"percentage": 0.0007,
+					"bundleTime": 1768944200017
+				},
+				{
+					"wallet": "66T7vacc88rQQFqLySL1WLnE5MAxJ1PU1xMeYq9xwYhi",
+					"initialBalance": 0,
+					"initialPercentage": 0,
+					"balance": 6334.410184,
+					"percentage": 0.00063,
+					"bundleTime": 1768841260625
+				}
+			]
+		},
+		"top10": 12.8001,
+		"dev": {
+			"percentage": 0,
+			"amount": 0
+		},
+		"fees": {
+			"photon": 2.025507883,
+			"network": 6.499351849,
+			"jito": 5.73722137,
+			"bullx": 1.652545721,
+			"0slot": 3.967507629,
+			"maestro": 0.375616875,
+			"trojan": 5.45096957,
+			"helius-sender": 0.057857075,
+			"soltradingbot": 0.169242409,
+			"padre": 0.759701784,
+			"bloom": 0.374024967,
+			"nextblock": 0.03,
+			"axiom": 1.0101e-05,
+			"totalTrading": 10.807619310000002,
+			"totalTips": 16.291937923000003,
+			"total": 27.099557233000002
+		},
+		"rugged": false,
+		"risks": [
+			{
+				"name": "No social media",
+				"description": "This token has no social media links",
+				"level": "warning",
+				"score": 2000
+			},
+			{
+				"name": "Top 10 Holders",
+				"description": "Top 10 holders own more than 12.80% of the total supply.",
+				"value": "12.80%",
+				"level": "danger",
+				"score": 5000
+			},
+			{
+				"name": "Bundler Holdings",
+				"description": "Bundlers own 5.40% of the total supply.",
+				"value": "5.40%",
+				"level": "warning",
+				"score": 3000
+			}
+		],
+		"score": 7
+	},
+	"buys": 2142,
+	"sells": 939,
+	"txns": 3081,
+	"holders": 50648
+}
