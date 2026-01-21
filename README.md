@@ -12,6 +12,11 @@ Small Node.js proof-of-concept for decoding Solana pool state accounts and deriv
 
 ## Setup
 - Node.js 18+ recommended.
+- Install dependencies:
+
+```bash
+npm install
+```
 - Create a `.env` file with your RPC URL:
 
 ```bash
@@ -20,17 +25,17 @@ SOLANATRACKER_DATA_API_KEY=YOUR_DATA_API_KEY
 NODE_ENV=development
 ```
 
-The `.env` file is ignored by git. The scripts read `RPC_URL` from the environment; if you want `.env` auto-loaded, install `dotenv`:
+The `.env` file is ignored by git. The scripts read `RPC_URL` from the environment.
 
-```bash
-npm i dotenv
-```
+We use `dotenvx` to load (and optionally encrypt) env vars. Run scripts via the npm commands (they wrap `dotenvx run --`) or call `dotenvx` directly.
+
+To encrypt `.env`, use `dotenvx` and keep `.env.keys` private (it is gitignored).
 
 ## Scripts
-- `node app.js <TOKEN_MINT>` (fetch pools via Data API, pick one, decode, show price)
-- `node inspectAccount.js <ACCOUNT_PUBKEY>`
-- `node tools/decodePool.js <POOL_STATE_PUBKEY> <MARKET> [idlPath]`
-- `node tools/priceFromPool.js <POOL_STATE_PUBKEY> <TOKEN_MINT> <MARKET> [quoteMint] [idlPath]`
+- `npm run app -- <TOKEN_MINT>` (fetch pools via Data API, pick one, decode, show price)
+- `npm run inspect -- <ACCOUNT_PUBKEY>`
+- `npm run decode:pool -- <POOL_STATE_PUBKEY> <MARKET> [idlPath]`
+- `npm run price:pool -- <POOL_STATE_PUBKEY> <TOKEN_MINT> <MARKET> [quoteMint] [idlPath]`
 
 ## Notes
 - `idl/` contains the Anchor-compatible IDLs used for decoding.
@@ -39,12 +44,11 @@ npm i dotenv
   - the IDL file,
   - the primary account name,
   - and the vault/mint field names needed to derive price.
-- Supported markets (current): `raydium-cpmm`, `meteora-dlmm`, `pump-amm`, `raydium-launchlab`.
+- Supported markets (current): `raydium-cpmm`, `meteora-dlmm`, `meteora-dyn-v2`, `pump-amm`, `raydium-launchlab`.
 - RPC clients are built with `@solana/kit` (HTTP + WSS) and log to `logs/app.log`.
 - Log level is controlled by `NODE_ENV` (e.g., `development` for verbose logs).
 
 ## Adding a new market
 1. Drop the IDL in `idl/<market>.json` (use the Data API `market` string).
 2. Add an entry to `idl/manifest.json` with `accountName`, `vaultFields`, and `mintFields`.
-3. Run `node app.js <TOKEN_MINT>` and select a pool for that market to validate.
-- The current scripts use `@solana/web3.js`. We will migrate to `@solana/kit` as we expand.
+3. Run `npm run app -- <TOKEN_MINT>` and select a pool for that market to validate.

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /* Generic pool price helper using idl/manifest.json */
 try {
-  require('dotenv').config();
+  require('@dotenvx/dotenvx').config();
 } catch (e) {
-  // Optional dependency; use process.env if dotenv isn't installed.
+  // Optional dependency; use process.env if dotenvx isn't installed.
 }
 
 const fs = require('fs');

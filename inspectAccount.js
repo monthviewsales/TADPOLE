@@ -1,8 +1,8 @@
 // inspectAccount.js
 try {
-  require('dotenv').config();
+  require('@dotenvx/dotenvx').config();
 } catch (e) {
-  // Optional dependency; use process.env if dotenv isn't installed.
+  // Optional dependency; use process.env if dotenvx isn't installed.
 }
 
 const logger = require('./lib/logger');

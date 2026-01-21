@@ -29,6 +29,7 @@
 - Generic tooling scripts live in `tools/` (avoid market-specific scripts).
 - Logging uses `lib/logger.js` (Winston). `NODE_ENV` controls log verbosity; logs go to `logs/app.log`.
 - RPC clients are created via `lib/solanaRpc.js` using `@solana/kit` (HTTP + WSS).
+- Environment variables are loaded with `dotenvx`; npm scripts wrap `dotenvx run --`.
 
 ## Adding a new market (agent checklist)
 1. Add `idl/<market>.json` using the Data API `market` string.
