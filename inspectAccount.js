@@ -48,7 +48,7 @@ async function main() {
 }
 
 main().catch((err) => {
-  logger.error({ error: err }, 'inspectAccount error');
+  logger.error('inspectAccount error', { error: err });
   console.error(err);
   process.exit(1);
 });

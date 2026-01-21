@@ -100,12 +100,22 @@ function formatDelta(prev, next) {
   return { diff: diffStr, pct: pctStr };
 }
 
+function normalizeSlot(slot) {
+  if (slot === null || slot === undefined) return null;
+  try {
+    return typeof slot === 'bigint' ? slot : BigInt(slot);
+  } catch (err) {
+    return null;
+  }
+}
+
 function renderLiveLine({ price, prevPrice, quoteMint, tokenMint, slot }) {
   const quoteShort = abbreviate(quoteMint || '');
   const tokenShort = abbreviate(tokenMint || '');
   const { diff, pct } = formatDelta(prevPrice, price);
   const ts = new Date().toISOString();
-  const slotPart = slot !== undefined && slot !== null ? `slot ${slot} | ` : '';
+  const slotPart =
+    slot !== undefined && slot !== null ? `slot ${slot.toString()} | ` : '';
   return `[${ts}] ${slotPart}price per ${tokenShort}: ${formatPrice(
     price
   )} ${quoteShort} | Δ ${diff} (${pct})`;
@@ -344,7 +354,7 @@ async function fetchVaultBalances({ baseVault, quoteVault }) {
     })
     .send();
   const [baseInfo, quoteInfo] = accounts.value;
-  const slot = accounts.context && accounts.context.slot;
+  const slot = normalizeSlot(accounts.context && accounts.context.slot);
 
   const baseAmount = parseTokenAmount(baseInfo);
   const quoteAmount = parseTokenAmount(quoteInfo);
@@ -395,7 +405,7 @@ function extractAccountNotification(notification) {
   if (notification.value && notification.value.data) {
     return {
       account: notification.value,
-      slot: notification.context && notification.context.slot,
+      slot: normalizeSlot(notification.context && notification.context.slot),
     };
   }
   if (notification.data) {
@@ -432,9 +442,9 @@ async function streamPoolPrice({ pool, tokenMint }) {
   console.log(`Pool: ${pool.poolId}`);
   console.log('Press Ctrl+C to stop.');
   const renderSyncLine = (baseSlot, quoteSlot) =>
-    `[${new Date().toISOString()}] syncing base slot ${baseSlot ?? 'n/a'} / quote slot ${
-      quoteSlot ?? 'n/a'
-    }`;
+    `[${new Date().toISOString()}] syncing base slot ${
+      baseSlot ? baseSlot.toString() : 'n/a'
+    } / quote slot ${quoteSlot ? quoteSlot.toString() : 'n/a'}`;
 
   let lastPrice = null;
   const printPrice = () => {
@@ -508,12 +518,12 @@ async function streamPoolPrice({ pool, tokenMint }) {
           };
           printPrice();
         } catch (err) {
-          logger.warn({ error: err }, 'Failed to parse live token amount');
+          logger.warn('Failed to parse live token amount', { error: err });
         }
       }
     } catch (err) {
       if (!abortController.signal.aborted) {
-        logger.error({ error: err }, 'Subscription error');
+        logger.error('Subscription error', { error: err });
       }
     }
   };
@@ -617,7 +627,7 @@ async function main() {
 }
 
 main().catch((err) => {
-  logger.error({ error: err }, 'app error');
+  logger.error('app error', { error: err });
   console.error('Error:', err.message || err);
   process.exit(1);
 });

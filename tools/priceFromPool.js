@@ -218,7 +218,7 @@ async function main() {
 }
 
 main().catch((err) => {
-  logger.error({ error: err }, 'tools priceFromPool error');
+  logger.error('tools priceFromPool error', { error: err });
   console.error('Error:', err.message || err);
   process.exit(1);
 });

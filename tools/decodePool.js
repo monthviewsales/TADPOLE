@@ -136,7 +136,7 @@ async function main() {
 }
 
 main().catch((err) => {
-  logger.error({ error: err }, 'tools decodePool error');
+  logger.error('tools decodePool error', { error: err });
   console.error('Error:', err.message || err);
   process.exit(1);
 });
