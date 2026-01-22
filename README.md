@@ -52,6 +52,23 @@ To encrypt `.env`, use `dotenvx` and keep `.env.keys` private (it is gitignored)
 - `npm run decode:pool -- <POOL_STATE_PUBKEY> <MARKET> [idlPath]`
 - `npm run price:pool -- <POOL_STATE_PUBKEY> <TOKEN_MINT> <MARKET> [quoteMint] [idlPath]`
 
+## Live mode UI
+Live mode prints a two-line display that refreshes in place:
+
+1) **Price line** (unchanged from previous behavior): timestamped spot price per base token, with slot when available and a delta vs the previous tick.
+2) **PoolTick summary line**: `STATE <name> <dir> | depth <quoteReserveUi> SOL | flow10 <net10> | flow60 <net60> | stale <seconds>s`
+
+Field meanings:
+- `STATE <name>`: state label from the pool state machine (THIN_OR_STALE, IDLE, IMPULSE, CONFIRMING, TRENDING, FAILED, or UNKNOWN).
+- `dir`: arrow for direction (↑ for UP, ↓ for DOWN) or blank.
+- `depth`: quote reserve in SOL (pool liquidity depth).
+- `flow10`: net quote reserve change over the last 10s window.
+- `flow60`: net quote reserve change over the last 60s window.
+- `stale`: seconds since the last coherent snapshot for the pool.
+
+## Snapshot mode output
+Snapshot mode prints a single price line (no live refresh). It represents the latest on-chain snapshot for the selected pool and uses the same spot price format as live mode.
+
 ## Testing
 - `npm test` runs Jest with coverage (60% global threshold over `lib/`, excluding `lib/logger.js`).
 

@@ -188,6 +188,63 @@ function writeLiveLine(line) {
   process.stdout.write(line);
 }
 
+let hasLiveLines = false;
+function writeLiveLines(line, detailLine) {
+  if (!process.stdout.isTTY) {
+    console.log(line);
+    return;
+  }
+  if (hasLiveLines) {
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+    readline.moveCursor(process.stdout, 0, -1);
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+  }
+  process.stdout.write(line);
+  process.stdout.write('\n');
+  readline.clearLine(process.stdout, 0);
+  readline.cursorTo(process.stdout, 0);
+  process.stdout.write(detailLine || '');
+  hasLiveLines = true;
+}
+
+function formatDepth(value) {
+  if (!Number.isFinite(value)) return '--';
+  return value.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function formatSignedFixed(value, decimals = 2) {
+  if (!Number.isFinite(value)) return '--';
+  const sign = value >= 0 ? '+' : '-';
+  return `${sign}${Math.abs(value).toFixed(decimals)}`;
+}
+
+function formatStaleSeconds(value) {
+  if (!Number.isFinite(value)) return '--';
+  return `${(value / 1000).toFixed(1)}s`;
+}
+
+function renderPoolTickSummary(tick) {
+  const state = tick && tick.state ? tick.state : null;
+  const stateName = state && state.name ? state.name : 'UNKNOWN';
+  const dir = state && state.dir ? state.dir : null;
+  const dirArrow = dir === 'UP' ? '↑' : dir === 'DOWN' ? '↓' : '';
+  const statePart = dirArrow
+    ? `STATE ${stateName} ${dirArrow}`
+    : `STATE ${stateName}`;
+  const depth = formatDepth(tick ? tick.quoteReserveUi : null);
+  const net10 = formatSignedFixed(
+    tick && tick.metrics ? tick.metrics.netQuoteFlow_10s : null
+  );
+  const net60 = formatSignedFixed(
+    tick && tick.metrics ? tick.metrics.netQuoteFlow_60s : null
+  );
+  const stale = formatStaleSeconds(tick ? tick.stalenessMs : null);
+
+  return `${statePart} | depth ${depth} SOL | flow10 ${net10} | flow60 ${net60} | stale ${stale}`;
+}
+
 function truncate(value, width) {
   const s = String(value ?? '');
   if (s.length <= width) return s;
@@ -625,6 +682,7 @@ async function streamPoolPrice({
     }`;
 
   let lastPrice = null;
+  let lastSummaryLine = renderPoolTickSummary(null);
   const DEBOUNCE_MS = 100;
   const printPrice = () => {
     const baseState = state.base;
@@ -638,7 +696,7 @@ async function streamPoolPrice({
 
     if (baseHasSlot && quoteHasSlot) {
       if (baseSlot !== quoteSlot) {
-        writeLiveLine(renderSyncLine(baseSlot, quoteSlot));
+        writeLiveLines(renderSyncLine(baseSlot, quoteSlot), lastSummaryLine);
         return;
       }
     } else {
@@ -661,7 +719,6 @@ async function streamPoolPrice({
       tokenMint,
       slot: slotForRender,
     });
-    writeLiveLine(line);
     const tsMs = Date.now();
     const tick = makePoolTick({
       identity,
@@ -674,7 +731,9 @@ async function streamPoolPrice({
       stalenessMs: 0,
       metrics: emptyMetrics(),
     });
-    handlePoolTick(tick);
+    const finalTick = handlePoolTick(tick);
+    lastSummaryLine = renderPoolTickSummary(finalTick);
+    writeLiveLines(line, lastSummaryLine);
     lastPrice = price;
   };
 
@@ -785,6 +844,7 @@ async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder
   });
 
   let lastPrice = null;
+  let lastSummaryLine = renderPoolTickSummary(null);
   const renderSnapshot = async () => {
     const response = await rpc
       .getAccountInfo(addressFn(curveAddress), { commitment: 'confirmed', encoding: 'base64' })
@@ -835,7 +895,6 @@ async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder
       tokenMint,
       slot,
     });
-    writeLiveLine(line);
     const tick = makePoolTick({
       identity,
       tsMs: Date.now(),
@@ -847,7 +906,9 @@ async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder
       stalenessMs: 0,
       metrics: emptyMetrics(),
     });
-    handlePoolTick(tick);
+    const finalTick = handlePoolTick(tick);
+    lastSummaryLine = renderPoolTickSummary(finalTick);
+    writeLiveLines(line, lastSummaryLine);
     lastPrice = price;
   };
 
@@ -891,7 +952,6 @@ async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder
           tokenMint,
           slot: payload.slot,
         });
-        writeLiveLine(line);
         const tick = makePoolTick({
           identity,
           tsMs: Date.now(),
@@ -903,7 +963,9 @@ async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder
           stalenessMs: 0,
           metrics: emptyMetrics(),
         });
-        handlePoolTick(tick);
+        const finalTick = handlePoolTick(tick);
+        lastSummaryLine = renderPoolTickSummary(finalTick);
+        writeLiveLines(line, lastSummaryLine);
         lastPrice = price;
       } catch (err) {
         logger.warn('Failed to decode bonding curve update', {
