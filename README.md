@@ -34,11 +34,13 @@ npm install
 cp .env.sample .env
 ```
 
-The `.env` file is ignored by git. The scripts read `RPC_URL`, `SOLANATRACKER_DATA_API_KEY`, and `VAULT_ENCODING` from the environment.
+The `.env` file is ignored by git. The scripts read `RPC_URL`, `SOLANATRACKER_DATA_API_KEY`, `VAULT_ENCODING`, and `MIN_QUOTE_SOL` from the environment.
 
 `VAULT_ENCODING` controls how vault balances are decoded:
 - `raw` (default): subscribe with base64 and decode SPL token accounts locally
 - `parsed`: subscribe with `jsonParsed` and extract the parsed token amount
+
+`MIN_QUOTE_SOL` sets the minimum quote reserve (default 35) required for state labeling; smaller pools are marked THIN_OR_STALE.
 
 We use `dotenvx` to load (and optionally encrypt) env vars. Run scripts via the npm commands (they wrap `dotenvx run --`) or call `dotenvx` directly.
 
@@ -64,7 +66,35 @@ To encrypt `.env`, use `dotenvx` and keep `.env.keys` private (it is gitignored)
 - RPC clients are built with `@solana/kit` (HTTP + WSS) and log to `logs/app.log`.
 - `RPC_URL` is used for both HTTP and WebSocket connections (include the API key in the URL).
 - Log level is controlled by `NODE_ENV` (e.g., `development` for verbose logs).
-- Pool ticks: whenever a price line is printed (snapshot or live), the app also emits a normalized PoolTick JSON object to `logs/poolTicks.log` (one line per tick). This includes spot price, reserves, staleness, and rolling metrics (quote flow + depth score).
+- Pool ticks: whenever a price line is printed (snapshot or live), the app also emits a normalized PoolTick JSON object to `logs/poolTicks.log` (one line per tick). This includes spot price, reserves, staleness, rolling metrics (quote flow + depth score), and a state label.
+
+## PoolTick specification
+PoolTick JSON lines written to `logs/poolTicks.log` follow this schema:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| tsMs | int | Unix timestamp in milliseconds. |
+| slot | int&#124;null | Solana slot when the tick was captured (null when unavailable). |
+| market | string | Market identifier (matches `idl/manifest.json`). |
+| poolId | string | Pool account address. |
+| baseMint | string | Base token mint. |
+| quoteMint | string | Quote token mint. |
+| priceQuotePerBase | number | Spot price in quote units per base. |
+| baseReserveUi | number&#124;null | Base reserve in UI units. |
+| quoteReserveUi | number&#124;null | Quote reserve in UI units. |
+| reserveSource | string | Source of reserves (vault/bonding curve). |
+| stalenessMs | int | Time since last coherent snapshot for the pool. |
+| metrics | object | Rolling flow metrics and depth score. |
+| metrics.netQuoteFlow_10s | number&#124;null | Net quote reserve change over 10s window. |
+| metrics.netQuoteFlow_60s | number&#124;null | Net quote reserve change over 60s window. |
+| metrics.netQuoteFlow_300s | number&#124;null | Net quote reserve change over 300s window. |
+| metrics.flowVol_10s | number&#124;null | Total absolute flow over 10s window. |
+| metrics.flowVol_60s | number&#124;null | Total absolute flow over 60s window. |
+| metrics.depthScore | number&#124;null | Log-based depth score for quote reserve. |
+| state | object | State label from the pool state machine. |
+| state.name | string | One of: THIN_OR_STALE, IDLE, IMPULSE, CONFIRMING, TRENDING, FAILED. |
+| state.dir | string&#124;null | Direction of the move: UP, DOWN, or null. |
+| state.reasons | string[] | Short reasons explaining the state decision. |
 
 ## Adding a new market
 1. Drop the IDL in `idl/<market>.json` (use the Data API `market` string).

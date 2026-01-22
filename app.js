@@ -28,6 +28,7 @@ const {
 const { createPoolTickBase, makePoolTick } = require('./lib/poolTick');
 const { createRollingMetrics } = require('./lib/rollingMetrics');
 const { createPoolTickLogger } = require('./lib/poolTickLogger');
+const { createPoolStateMachine } = require('./lib/poolStateMachine');
 
 const RPC_URL = process.env.RPC_URL;
 const DATA_API_KEY = process.env.SOLANATRACKER_DATA_API_KEY;
@@ -44,6 +45,23 @@ if (!DATA_API_KEY) {
   process.exit(1);
 }
 
+function parseMinQuoteSol(rawValue) {
+  if (rawValue === undefined || rawValue === null) return 35;
+  const trimmed = String(rawValue).trim();
+  if (!trimmed) return 35;
+  const parsed = Number.parseFloat(trimmed);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    console.error(
+      `Invalid MIN_QUOTE_SOL value "${rawValue}". Must be a number > 0.`
+    );
+    process.exit(1);
+  }
+  return parsed;
+}
+
+const MIN_QUOTE_SOL = parseMinQuoteSol(process.env.MIN_QUOTE_SOL);
+logger.info(`State machine MIN_QUOTE_SOL=${MIN_QUOTE_SOL}`);
+
 const IDL_CACHE = new Map();
 const MANIFEST_PATH = path.join(__dirname, 'idl', 'manifest.json');
 let MANIFEST_CACHE = null;
@@ -55,6 +73,7 @@ let getAddressEncoderFn = null;
 const WSOL_MINT = 'So11111111111111111111111111111111111111112';
 const rollingMetrics = createRollingMetrics();
 const poolTickLogger = createPoolTickLogger();
+const poolStateMachine = createPoolStateMachine({ minQuoteSol: MIN_QUOTE_SOL });
 const lastCoherentSnapshot = new Map();
 
 function shouldDebugRpc() {
@@ -88,6 +107,13 @@ function handlePoolTick(tick) {
     ...tick,
     stalenessMs,
     metrics,
+  };
+
+  const state = poolStateMachine.evaluateTick(finalTick);
+  finalTick.state = {
+    name: state.state,
+    dir: state.dir,
+    reasons: state.reasons,
   };
 
   poolTickLogger.info(finalTick);
