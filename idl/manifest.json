@@ -6,6 +6,27 @@
     "mintFields": ["token_0_mint", "token_1_mint"],
     "notes": "Raydium CPMM (CP-Swap)"
   },
+  "raydium-amm": {
+    "idl": "idl/raydium-amm.json",
+    "accountName": "AmmInfo",
+    "vaultFields": ["tokenCoin", "tokenPc"],
+    "mintFields": ["coinMint", "pcMint"],
+    "notes": "Raydium AMM (legacy / OpenBook-Serum style) — AmmInfo"
+  },
+  "raydium-amm-v3": {
+    "idl": "idl/raydium-clmm.json",
+    "accountName": "PoolState",
+    "vaultFields": ["token_vault_0", "token_vault_1"],
+    "mintFields": ["token_mint_0", "token_mint_1"],
+    "notes": "Raydium CLMM / AMM v3 (CAMMC…); PoolState"
+  },
+  "raydium-clmm": {
+    "idl": "idl/raydium-clmm.json",
+    "accountName": "PoolState",
+    "vaultFields": ["token_vault_0", "token_vault_1"],
+    "mintFields": ["token_mint_0", "token_mint_1"],
+    "notes": "Alias for raydium-amm-v3"
+  },
   "meteora-dlmm": {
     "idl": "idl/meteora-dlmm.json",
     "accountName": "LbPair",
