@@ -9,9 +9,26 @@
   "raydium-amm": {
     "idl": "idl/raydium-amm.json",
     "accountName": "AmmInfo",
+    "decoderType": "raydiumAmmV4",
     "vaultFields": ["tokenCoin", "tokenPc"],
     "mintFields": ["coinMint", "pcMint"],
-    "notes": "Raydium AMM (legacy / OpenBook-Serum style) — AmmInfo"
+    "notes": "Raydium AMM v4 (legacy / OpenBook-Serum style) — AmmInfo"
+  },
+  "raydium-amm-v4": {
+    "idl": "idl/custom/raydium-amm-v4.json",
+    "accountName": "AmmInfo",
+    "decoderType": "raydiumAmmV4",
+    "vaultFields": ["tokenCoin", "tokenPc"],
+    "mintFields": ["coinMint", "pcMint"],
+    "notes": "Raydium AMM v4 (legacy / OpenBook-Serum style) — AmmInfo"
+  },
+  "raydium": {
+    "idl": "idl/custom/raydium-amm-v4.json",
+    "accountName": "AmmInfo",
+    "decoderType": "raydiumAmmV4",
+    "vaultFields": ["tokenCoin", "tokenPc"],
+    "mintFields": ["coinMint", "pcMint"],
+    "notes": "Alias for raydium-amm-v4 (legacy Raydium AMM v4)"
   },
   "raydium-amm-v3": {
     "idl": "idl/raydium-clmm.json",

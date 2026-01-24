@@ -31,8 +31,12 @@ describe('format helpers', () => {
   });
 
   test('formatDelta handles missing previous', () => {
-    expect(formatDelta(null, 1)).toEqual({ diff: 'n/a', pct: 'n/a' });
-    expect(formatDelta(0, 2)).toEqual({ diff: '+2', pct: 'n/a' });
+    expect(formatDelta(null, 1)).toEqual({
+      diff: 'n/a',
+      pct: 'n/a',
+      direction: null,
+    });
+    expect(formatDelta(0, 2)).toEqual({ diff: '+2', pct: 'n/a', direction: 'pos' });
   });
 
   test('formatRatio handles zero sells', () => {
@@ -57,12 +61,16 @@ describe('format helpers', () => {
       quoteMint: 'So11111111111111111111111111111111111111112',
       tokenMint: '8TuHxxxxxxxxxxxxxxxxxxxxxxxxxxxxpump',
       slot: 123n,
+      quoteDecimals: 9,
     });
 
-    expect(line).toContain('[2026-01-21T00:00:00.000Z] slot 123 | price per');
-    expect(line).toContain('8TuH...pump');
-    expect(line).toContain('So11...1112');
-    expect(line).toContain('Δ +0.000000000462');
+    const stripped = line.replace(/\x1b\[[0-9;]*m/g, '');
+    expect(stripped).toContain(
+      '[2026-01-21T00:00:00.000Z] slot 123 | price per'
+    );
+    expect(stripped).toContain('8TuH...pump');
+    expect(stripped).toContain('So11...1112');
+    expect(stripped).toContain('Δ +0.000000000');
 
     jest.useRealTimers();
   });

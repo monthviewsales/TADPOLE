@@ -29,6 +29,7 @@ const { createPoolTickBase, makePoolTick } = require('./lib/poolTick');
 const { createRollingMetrics } = require('./lib/rollingMetrics');
 const { createPoolTickLogger } = require('./lib/poolTickLogger');
 const { createPoolStateMachine } = require('./lib/poolStateMachine');
+const { decodeRaydiumAmmV4Account } = require('./lib/raydiumAmmV4Decoder');
 
 const RPC_URL = process.env.RPC_URL;
 const DATA_API_KEY = process.env.SOLANATRACKER_DATA_API_KEY;
@@ -183,30 +184,58 @@ function writeLiveLine(line) {
     console.log(line);
     return;
   }
-  readline.clearLine(process.stdout, 0);
-  readline.cursorTo(process.stdout, 0);
-  process.stdout.write(line);
+  const cols = process.stdout.columns || 80;
+  const safe = line || '';
+  const rows = Math.max(1, Math.ceil(safe.length / cols));
+  for (let i = 0; i < rows; i += 1) {
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+    if (i < rows - 1) {
+      readline.moveCursor(process.stdout, 0, -1);
+    }
+  }
+  process.stdout.write(safe);
 }
 
 let hasLiveLines = false;
+let liveLineRows = 0;
+
+function countTerminalRows(line) {
+  const cols = process.stdout.columns || 80;
+  const safe = String(line || '');
+  if (!safe) return 1;
+  return Math.max(1, Math.ceil(safe.length / cols));
+}
+
+function clearLiveLines() {
+  if (!hasLiveLines) return;
+  for (let i = 0; i < liveLineRows; i += 1) {
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+    if (i < liveLineRows - 1) {
+      readline.moveCursor(process.stdout, 0, -1);
+    }
+  }
+}
+
 function writeLiveLines(line, detailLine) {
   if (!process.stdout.isTTY) {
     console.log(line);
+    if (detailLine) console.log(detailLine);
     return;
   }
-  if (hasLiveLines) {
-    readline.clearLine(process.stdout, 0);
-    readline.cursorTo(process.stdout, 0);
-    readline.moveCursor(process.stdout, 0, -1);
-    readline.clearLine(process.stdout, 0);
-    readline.cursorTo(process.stdout, 0);
-  }
-  process.stdout.write(line);
+  if (hasLiveLines) clearLiveLines();
+
+  const safeLine = line || '';
+  const safeDetail = detailLine || '';
+
+  process.stdout.write(safeLine);
   process.stdout.write('\n');
   readline.clearLine(process.stdout, 0);
   readline.cursorTo(process.stdout, 0);
-  process.stdout.write(detailLine || '');
+  process.stdout.write(safeDetail);
   hasLiveLines = true;
+  liveLineRows = countTerminalRows(safeLine) + countTerminalRows(safeDetail);
 }
 
 function formatDepth(value) {
@@ -310,7 +339,10 @@ function selectDecoder(market) {
   };
 }
 
-function decodePoolData(dataBuffer, decoder) {
+async function decodePoolData(dataBuffer, decoder) {
+  if (decoder.decoderType === 'raydiumAmmV4') {
+    return decodeRaydiumAmmV4Account(dataBuffer);
+  }
   const idl = loadIdl(decoder.idlPath);
   const coder = new anchor.BorshAccountsCoder(idl);
 
@@ -718,6 +750,7 @@ async function streamPoolPrice({
       quoteMint,
       tokenMint,
       slot: slotForRender,
+      quoteDecimals,
     });
     const tsMs = Date.now();
     const tick = makePoolTick({
@@ -811,7 +844,13 @@ function getAccountDataBuffer(account) {
   return null;
 }
 
-async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder }) {
+async function streamBondingCurvePrice({
+  pool,
+  tokenMint,
+  tokenDecimals,
+  decoder,
+  quoteDecimals = 9,
+}) {
   const abortController = new AbortController();
 
   const stop = () => {
@@ -863,7 +902,7 @@ async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder
     const buffer = Buffer.from(rawData, 'base64');
     let decoded;
     try {
-      decoded = decodePoolData(buffer, decoder);
+      decoded = await decodePoolData(buffer, decoder);
     } catch (err) {
       logger.error('Failed to decode bonding curve snapshot', {
         error: err,
@@ -894,6 +933,7 @@ async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder
       quoteMint: WSOL_MINT,
       tokenMint,
       slot,
+      quoteDecimals,
     });
     const tick = makePoolTick({
       identity,
@@ -929,7 +969,7 @@ async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder
       if (!buffer) continue;
 
       try {
-        const decoded = decodePoolData(buffer, decoder);
+        const decoded = await decodePoolData(buffer, decoder);
         const virtualSol = toBigInt(getDecodedField(decoded, decoder.virtualSolField));
         const virtualToken = toBigInt(getDecodedField(decoded, decoder.virtualTokenField));
         const realSol = toBigInt(getDecodedField(decoded, 'real_sol_reserves'));
@@ -951,6 +991,7 @@ async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder
           quoteMint: WSOL_MINT,
           tokenMint,
           slot: payload.slot,
+          quoteDecimals,
         });
         const tick = makePoolTick({
           identity,
