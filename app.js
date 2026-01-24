@@ -750,6 +750,7 @@ async function streamPoolPrice({
       quoteMint,
       tokenMint,
       slot: slotForRender,
+      quoteDecimals,
     });
     const tsMs = Date.now();
     const tick = makePoolTick({
@@ -843,7 +844,13 @@ function getAccountDataBuffer(account) {
   return null;
 }
 
-async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder }) {
+async function streamBondingCurvePrice({
+  pool,
+  tokenMint,
+  tokenDecimals,
+  decoder,
+  quoteDecimals = 9,
+}) {
   const abortController = new AbortController();
 
   const stop = () => {
@@ -926,6 +933,7 @@ async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder
       quoteMint: WSOL_MINT,
       tokenMint,
       slot,
+      quoteDecimals,
     });
     const tick = makePoolTick({
       identity,
@@ -983,6 +991,7 @@ async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder
           quoteMint: WSOL_MINT,
           tokenMint,
           slot: payload.slot,
+          quoteDecimals,
         });
         const tick = makePoolTick({
           identity,
