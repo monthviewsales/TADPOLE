@@ -184,30 +184,58 @@ function writeLiveLine(line) {
     console.log(line);
     return;
   }
-  readline.clearLine(process.stdout, 0);
-  readline.cursorTo(process.stdout, 0);
-  process.stdout.write(line);
+  const cols = process.stdout.columns || 80;
+  const safe = line || '';
+  const rows = Math.max(1, Math.ceil(safe.length / cols));
+  for (let i = 0; i < rows; i += 1) {
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+    if (i < rows - 1) {
+      readline.moveCursor(process.stdout, 0, -1);
+    }
+  }
+  process.stdout.write(safe);
 }
 
 let hasLiveLines = false;
+let liveLineRows = 0;
+
+function countTerminalRows(line) {
+  const cols = process.stdout.columns || 80;
+  const safe = String(line || '');
+  if (!safe) return 1;
+  return Math.max(1, Math.ceil(safe.length / cols));
+}
+
+function clearLiveLines() {
+  if (!hasLiveLines) return;
+  for (let i = 0; i < liveLineRows; i += 1) {
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+    if (i < liveLineRows - 1) {
+      readline.moveCursor(process.stdout, 0, -1);
+    }
+  }
+}
+
 function writeLiveLines(line, detailLine) {
   if (!process.stdout.isTTY) {
     console.log(line);
+    if (detailLine) console.log(detailLine);
     return;
   }
-  if (hasLiveLines) {
-    readline.clearLine(process.stdout, 0);
-    readline.cursorTo(process.stdout, 0);
-    readline.moveCursor(process.stdout, 0, -1);
-    readline.clearLine(process.stdout, 0);
-    readline.cursorTo(process.stdout, 0);
-  }
-  process.stdout.write(line);
+  if (hasLiveLines) clearLiveLines();
+
+  const safeLine = line || '';
+  const safeDetail = detailLine || '';
+
+  process.stdout.write(safeLine);
   process.stdout.write('\n');
   readline.clearLine(process.stdout, 0);
   readline.cursorTo(process.stdout, 0);
-  process.stdout.write(detailLine || '');
+  process.stdout.write(safeDetail);
   hasLiveLines = true;
+  liveLineRows = countTerminalRows(safeLine) + countTerminalRows(safeDetail);
 }
 
 function formatDepth(value) {
