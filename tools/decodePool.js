@@ -11,6 +11,7 @@ const path = require('path');
 const anchor = require('@coral-xyz/anchor');
 const logger = require('../lib/logger');
 const { createRpcClients } = require('../lib/solanaRpc');
+const { decodeRaydiumAmmV4Account } = require('../lib/raydiumAmmV4Decoder');
 
 const MANIFEST_PATH = path.join(__dirname, '..', 'idl', 'manifest.json');
 
@@ -40,9 +41,15 @@ function pubkeyToString(value) {
   return String(value);
 }
 
-function decodeAccount(dataBuffer, idl, preferredName) {
+async function decodeAccount(dataBuffer, idl, entry) {
+  if (entry && entry.decoderType === 'raydiumAmmV4') {
+    const decoded = await decodeRaydiumAmmV4Account(dataBuffer);
+    return { decoded, name: entry.accountName || 'AmmInfo' };
+  }
+
   const coder = new anchor.BorshAccountsCoder(idl);
 
+  const preferredName = entry && entry.accountName;
   if (preferredName) {
     try {
       const decoded = coder.decode(preferredName, dataBuffer);
@@ -104,7 +111,7 @@ async function main() {
 
   const rawData = Array.isArray(info.data) ? info.data[0] : info.data;
   const dataBuffer = Buffer.from(rawData, 'base64');
-  const decodedResult = decodeAccount(dataBuffer, idl, entry.accountName);
+  const decodedResult = await decodeAccount(dataBuffer, idl, entry);
   if (!decodedResult) {
     console.error('Could not decode the pool state with the provided IDL.');
     process.exit(1);

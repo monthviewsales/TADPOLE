@@ -29,6 +29,7 @@ const { createPoolTickBase, makePoolTick } = require('./lib/poolTick');
 const { createRollingMetrics } = require('./lib/rollingMetrics');
 const { createPoolTickLogger } = require('./lib/poolTickLogger');
 const { createPoolStateMachine } = require('./lib/poolStateMachine');
+const { decodeRaydiumAmmV4Account } = require('./lib/raydiumAmmV4Decoder');
 
 const RPC_URL = process.env.RPC_URL;
 const DATA_API_KEY = process.env.SOLANATRACKER_DATA_API_KEY;
@@ -310,7 +311,10 @@ function selectDecoder(market) {
   };
 }
 
-function decodePoolData(dataBuffer, decoder) {
+async function decodePoolData(dataBuffer, decoder) {
+  if (decoder.decoderType === 'raydiumAmmV4') {
+    return decodeRaydiumAmmV4Account(dataBuffer);
+  }
   const idl = loadIdl(decoder.idlPath);
   const coder = new anchor.BorshAccountsCoder(idl);
 
@@ -863,7 +867,7 @@ async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder
     const buffer = Buffer.from(rawData, 'base64');
     let decoded;
     try {
-      decoded = decodePoolData(buffer, decoder);
+      decoded = await decodePoolData(buffer, decoder);
     } catch (err) {
       logger.error('Failed to decode bonding curve snapshot', {
         error: err,
@@ -929,7 +933,7 @@ async function streamBondingCurvePrice({ pool, tokenMint, tokenDecimals, decoder
       if (!buffer) continue;
 
       try {
-        const decoded = decodePoolData(buffer, decoder);
+        const decoded = await decodePoolData(buffer, decoder);
         const virtualSol = toBigInt(getDecodedField(decoded, decoder.virtualSolField));
         const virtualToken = toBigInt(getDecodedField(decoded, decoder.virtualTokenField));
         const realSol = toBigInt(getDecodedField(decoded, 'real_sol_reserves'));
