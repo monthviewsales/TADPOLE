@@ -64,10 +64,13 @@ describe('format helpers', () => {
       quoteDecimals: 9,
     });
 
-    expect(line).toContain('[2026-01-21T00:00:00.000Z] slot 123 | price per');
-    expect(line).toContain('8TuH...pump');
-    expect(line).toContain('So11...1112');
-    expect(line).toContain('Δ +0.000000000');
+    const stripped = line.replace(/\x1b\[[0-9;]*m/g, '');
+    expect(stripped).toContain(
+      '[2026-01-21T00:00:00.000Z] slot 123 | price per'
+    );
+    expect(stripped).toContain('8TuH...pump');
+    expect(stripped).toContain('So11...1112');
+    expect(stripped).toContain('Δ +0.000000000');
 
     jest.useRealTimers();
   });
