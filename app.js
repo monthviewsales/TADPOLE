@@ -333,6 +333,7 @@ function selectDecoder(market) {
     accountName: entry.accountName,
     vaultFields: entry.vaultFields || [],
     mintFields: entry.mintFields || [],
+    quoteMintFromPool: Boolean(entry.quoteMintFromPool),
     decoderType: entry.decoderType || 'vaults',
     virtualSolField: entry.virtualSolField,
     virtualTokenField: entry.virtualTokenField,
@@ -390,16 +391,25 @@ async function decodePoolState(poolId, decoder, options = {}) {
   return decodePoolData(dataBuffer, decoder);
 }
 
-function extractVaults(decoded, decoder) {
+function extractVaults(decoded, decoder, options = {}) {
   const vaults = [];
-  const count = Math.min(decoder.vaultFields.length, decoder.mintFields.length);
+  const count = decoder.vaultFields.length;
+  const fallbackQuoteMint = options.quoteToken ? String(options.quoteToken) : '';
 
   for (let i = 0; i < count; i += 1) {
     const vaultField = decoder.vaultFields[i];
     const mintField = decoder.mintFields[i];
+    const vault = pubkeyToString(decoded[vaultField]);
+    if (!vault) continue;
+
+    let mint = mintField ? pubkeyToString(decoded[mintField]) : '';
+    if (!mint && decoder.quoteMintFromPool && i > 0 && fallbackQuoteMint) {
+      mint = fallbackQuoteMint;
+    }
+
     vaults.push({
-      mint: pubkeyToString(decoded[mintField]),
-      vault: pubkeyToString(decoded[vaultField]),
+      mint,
+      vault,
     });
   }
 
@@ -566,7 +576,9 @@ async function getPoolVaultContext({ pool, tokenMint, debug }) {
   const decoded = await decodePoolState(pool.poolId, decoder, {
     debugLabel: debug ? `${pool.market} pool state` : null,
   });
-  const vaults = extractVaults(decoded, decoder);
+  const vaults = extractVaults(decoded, decoder, {
+    quoteToken: pool.quoteToken,
+  });
 
   const { baseVault, quoteVault, quoteMint } = selectVaults({
     vaults,

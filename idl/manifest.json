@@ -58,6 +58,14 @@
     "mintFields": ["token_a_mint", "token_b_mint"],
     "notes": "Meteora Dynamic V2"
   },
+  "meteora-curve": {
+    "idl": "idl/meteora-curve.json",
+    "accountName": "VirtualPool",
+    "vaultFields": ["base_vault", "quote_vault"],
+    "mintFields": ["base_mint"],
+    "quoteMintFromPool": true,
+    "notes": "Meteora Curve"
+  },
   "pump-amm": {
     "idl": "idl/pump-amm.json",
     "accountName": "Pool",

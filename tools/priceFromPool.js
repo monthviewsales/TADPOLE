@@ -73,18 +73,27 @@ async function decodeAccount(dataBuffer, idl, entry) {
   return null;
 }
 
-function extractVaults(decoded, entry) {
+function extractVaults(decoded, entry, options = {}) {
   const vaults = [];
   const vaultFields = entry.vaultFields || [];
   const mintFields = entry.mintFields || [];
-  const count = Math.min(vaultFields.length, mintFields.length);
+  const count = vaultFields.length;
+  const fallbackQuoteMint = options.quoteMint ? String(options.quoteMint) : '';
 
   for (let i = 0; i < count; i += 1) {
     const vaultField = vaultFields[i];
     const mintField = mintFields[i];
+    const vault = pubkeyToString(decoded[vaultField]);
+    if (!vault) continue;
+
+    let mint = mintField ? pubkeyToString(decoded[mintField]) : '';
+    if (!mint && entry.quoteMintFromPool && i > 0 && fallbackQuoteMint) {
+      mint = fallbackQuoteMint;
+    }
+
     vaults.push({
-      mint: pubkeyToString(decoded[mintField]),
-      vault: pubkeyToString(decoded[vaultField]),
+      mint,
+      vault,
     });
   }
 
@@ -153,7 +162,9 @@ async function main() {
   }
 
   const { decoded, name } = decodedResult;
-  const vaults = extractVaults(decoded, entry);
+  const vaults = extractVaults(decoded, entry, {
+    quoteMint: quoteMintOverride,
+  });
   if (vaults.length < 2) {
     console.error('Vault fields are missing or incomplete in the manifest.');
     process.exit(1);
@@ -165,18 +176,20 @@ async function main() {
     process.exit(1);
   }
 
-  let quoteMint = quoteMintOverride;
+  let quoteMint = quoteMintOverride || null;
   if (!quoteMint) {
-    const other = vaults.find((v) => v.mint !== tokenMint);
-    quoteMint = other ? other.mint : null;
+    const otherByMint = vaults.find((v) => v.mint && v.mint !== tokenMint);
+    quoteMint = otherByMint ? otherByMint.mint : null;
   }
 
-  if (!quoteMint) {
-    console.error('Unable to determine quote mint.');
-    process.exit(1);
+  let quoteVault = quoteMint ? vaults.find((v) => v.mint === quoteMint) : null;
+  if (!quoteVault) {
+    quoteVault = vaults.find((v) => v.vault !== baseVault.vault) || null;
+    if (quoteVault && !quoteMint) {
+      quoteMint = quoteVault.mint || '';
+    }
   }
 
-  const quoteVault = vaults.find((v) => v.mint === quoteMint);
   if (!quoteVault) {
     console.error('Quote mint does not map to a decoded vault.');
     process.exit(1);
@@ -199,7 +212,7 @@ async function main() {
       commitment: 'confirmed',
       encodingMode: 'parsed',
       decimals: null,
-      mint: quoteMint,
+      mint: quoteMint || null,
     }),
   ]);
 
@@ -213,7 +226,7 @@ async function main() {
   console.log('market:', market);
   console.log('decodedAs:', name);
   console.log('baseMint:', tokenMint);
-  console.log('quoteMint:', quoteMint);
+  console.log('quoteMint:', quoteMint || '(unknown)');
   console.log('price:', formatPrice(price));
 }
 

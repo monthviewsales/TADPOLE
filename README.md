@@ -79,7 +79,7 @@ Snapshot mode prints a single price line (no live refresh). It represents the la
   - the IDL file,
   - the primary account name,
   - and the vault/mint field names needed to derive price.
-- Supported markets (current): `raydium-cpmm`, `meteora-dlmm`, `meteora-dyn-v2`, `pump-amm`, `pumpfun-amm`, `pumpfun`, `raydium-launchlab`.
+- Supported markets (current): `raydium-cpmm`, `meteora-dlmm`, `meteora-dyn-v2`, `meteora-curve`, `pump-amm`, `pumpfun-amm`, `pumpfun`, `raydium-launchlab`.
 - RPC clients are built with `@solana/kit` (HTTP + WSS) and log to `logs/app.log`.
 - `RPC_URL` is used for both HTTP and WebSocket connections (include the API key in the URL).
 - Log level is controlled by `NODE_ENV` (e.g., `development` for verbose logs).
@@ -116,7 +116,8 @@ PoolTick JSON lines written to `logs/poolTicks.log` follow this schema:
 ## Adding a new market
 1. Drop the IDL in `idl/<market>.json` (use the Data API `market` string).
 2. Add an entry to `idl/manifest.json` with `accountName`, `vaultFields`, and `mintFields`.
-3. Run `npm run app -- <TOKEN_MINT>` and select a pool for that market to validate.
+3. If a market stores quote vault but not quote mint in pool state, set `"quoteMintFromPool": true` in the manifest entry.
+4. Run `npm run app -- <TOKEN_MINT>` and select a pool for that market to validate.
 
 ## 📡 Connect with VAULT77
 
