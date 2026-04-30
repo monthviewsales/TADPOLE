@@ -124,7 +124,7 @@ async function main() {
 
   const vaultFields = entry.vaultFields || [];
   const mintFields = entry.mintFields || [];
-  const count = Math.min(vaultFields.length, mintFields.length);
+  const count = vaultFields.length;
 
   if (count === 0) {
     console.log('No vault/mint fields defined for this market in manifest.');
@@ -135,9 +135,15 @@ async function main() {
   for (let i = 0; i < count; i += 1) {
     const vaultField = vaultFields[i];
     const mintField = mintFields[i];
-    const mint = pubkeyToString(decoded[mintField]);
+    const mint = mintField ? pubkeyToString(decoded[mintField]) : '';
     const vault = pubkeyToString(decoded[vaultField]);
-    console.log(`${mintField}: ${mint}`);
+    if (mintField) {
+      console.log(`${mintField}: ${mint}`);
+    } else if (entry.quoteMintFromPool && i > 0) {
+      console.log('quoteMint: <from pool quoteToken>');
+    } else {
+      console.log('mint: <not provided>');
+    }
     console.log(`${vaultField}: ${vault}`);
   }
 }

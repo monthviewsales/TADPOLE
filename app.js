@@ -333,6 +333,7 @@ function selectDecoder(market) {
     accountName: entry.accountName,
     vaultFields: entry.vaultFields || [],
     mintFields: entry.mintFields || [],
+    quoteMintFromPool: Boolean(entry.quoteMintFromPool),
     decoderType: entry.decoderType || 'vaults',
     virtualSolField: entry.virtualSolField,
     virtualTokenField: entry.virtualTokenField,
@@ -390,16 +391,25 @@ async function decodePoolState(poolId, decoder, options = {}) {
   return decodePoolData(dataBuffer, decoder);
 }
 
-function extractVaults(decoded, decoder) {
+function extractVaults(decoded, decoder, options = {}) {
   const vaults = [];
-  const count = Math.min(decoder.vaultFields.length, decoder.mintFields.length);
+  const count = decoder.vaultFields.length;
+  const fallbackQuoteMint = options.quoteToken ? String(options.quoteToken) : '';
 
   for (let i = 0; i < count; i += 1) {
     const vaultField = decoder.vaultFields[i];
     const mintField = decoder.mintFields[i];
+    const vault = pubkeyToString(decoded[vaultField]);
+    if (!vault) continue;
+
+    let mint = mintField ? pubkeyToString(decoded[mintField]) : '';
+    if (!mint && decoder.quoteMintFromPool && i > 0 && fallbackQuoteMint) {
+      mint = fallbackQuoteMint;
+    }
+
     vaults.push({
-      mint: pubkeyToString(decoded[mintField]),
-      vault: pubkeyToString(decoded[vaultField]),
+      mint,
+      vault,
     });
   }
 
@@ -415,16 +425,21 @@ function selectVaults({ vaults, tokenMint, quoteToken }) {
 
   let quoteMint = quoteToken && byMint.has(quoteToken) ? quoteToken : null;
   if (!quoteMint) {
-    const other = vaults.find((v) => v.mint !== tokenMint);
-    quoteMint = other ? other.mint : null;
+    const otherByMint = vaults.find((v) => v.mint && v.mint !== tokenMint);
+    quoteMint = otherByMint ? otherByMint.mint : null;
   }
-
-  if (!quoteMint) {
-    throw new Error('Unable to determine quote mint for the selected pool.');
-  }
-
-  const quoteVault = byMint.get(quoteMint);
+  let quoteVault = quoteMint ? byMint.get(quoteMint) : null;
   if (!quoteVault) {
+    const otherByVault = vaults.find((v) => v.vault !== baseVault);
+    quoteVault = otherByVault ? otherByVault.vault : null;
+    if (!quoteMint && otherByVault && otherByVault.mint) {
+      quoteMint = otherByVault.mint;
+    }
+  }
+  if (!quoteVault) {
+    if (!quoteMint) {
+      throw new Error('Unable to determine quote mint for the selected pool.');
+    }
     throw new Error('Quote mint does not map to a decoded vault.');
   }
 
@@ -566,7 +581,9 @@ async function getPoolVaultContext({ pool, tokenMint, debug }) {
   const decoded = await decodePoolState(pool.poolId, decoder, {
     debugLabel: debug ? `${pool.market} pool state` : null,
   });
-  const vaults = extractVaults(decoded, decoder);
+  const vaults = extractVaults(decoded, decoder, {
+    quoteToken: pool.quoteToken,
+  });
 
   const { baseVault, quoteVault, quoteMint } = selectVaults({
     vaults,
