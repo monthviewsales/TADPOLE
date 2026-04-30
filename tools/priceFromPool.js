@@ -177,6 +177,10 @@ async function main() {
   }
 
   let quoteMint = quoteMintOverride || null;
+  if (quoteMint && !vaults.some((v) => v.mint === quoteMint)) {
+    console.error('Quote mint does not map to a decoded vault.');
+    process.exit(1);
+  }
   if (!quoteMint) {
     const otherByMint = vaults.find((v) => v.mint && v.mint !== tokenMint);
     quoteMint = otherByMint ? otherByMint.mint : null;

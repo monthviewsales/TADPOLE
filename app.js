@@ -425,16 +425,21 @@ function selectVaults({ vaults, tokenMint, quoteToken }) {
 
   let quoteMint = quoteToken && byMint.has(quoteToken) ? quoteToken : null;
   if (!quoteMint) {
-    const other = vaults.find((v) => v.mint !== tokenMint);
-    quoteMint = other ? other.mint : null;
+    const otherByMint = vaults.find((v) => v.mint && v.mint !== tokenMint);
+    quoteMint = otherByMint ? otherByMint.mint : null;
   }
-
-  if (!quoteMint) {
-    throw new Error('Unable to determine quote mint for the selected pool.');
-  }
-
-  const quoteVault = byMint.get(quoteMint);
+  let quoteVault = quoteMint ? byMint.get(quoteMint) : null;
   if (!quoteVault) {
+    const otherByVault = vaults.find((v) => v.vault !== baseVault);
+    quoteVault = otherByVault ? otherByVault.vault : null;
+    if (!quoteMint && otherByVault && otherByVault.mint) {
+      quoteMint = otherByVault.mint;
+    }
+  }
+  if (!quoteVault) {
+    if (!quoteMint) {
+      throw new Error('Unable to determine quote mint for the selected pool.');
+    }
     throw new Error('Quote mint does not map to a decoded vault.');
   }
 
